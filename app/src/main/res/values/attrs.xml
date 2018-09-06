@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="letButton">
+        <attr name="letterColor" format="color" />
+        <attr name="bgColor" format="color" />
+        <attr name="circleBtnSize" format="dimension" />
+    </declare-styleable>
+</resources>

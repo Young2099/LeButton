@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="bigbang_blue">#8D9FB8</color>>
+    <color name="logo_green">#83c146</color>
+    <!-- 首页背景底色 -->
+    <color name="home_bg_color">#f7f7f7</color>
+    <color name="line_dialog">#808080</color>
+    <!-- 频道管理相关 -->
+    <color name="bg_titlebar">#860000</color>
+    <color name="subscribe_item_pressed_stroke">#ffcdcdcd</color>
+    <color name="subscribe_item_normal_stroke">#ffcdcdcd</color>
+    <color name="subscribe_item_drag_stroke">#ffd2d2d2</color>
+    <color name="subscribe_item_selected_stroke">#ffcc3131</color>
+
+    <color name="white">#ffffff</color> <!-- 白色 -->
+    <color name="black">#000000</color> <!-- 白色 -->
+
+</resources>

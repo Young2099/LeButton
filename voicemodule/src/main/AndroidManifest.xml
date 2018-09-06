@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="so.chinaso.com.voicemodule">
+
+
+    <application
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".VoiceActivity"
+            android:label="@string/title_activity_voice"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <!--<action android:name="android.intent.action.VIEW"/>-->
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
