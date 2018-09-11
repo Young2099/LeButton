@@ -9,7 +9,6 @@ import so.chinaso.com.voicemodule.entity.RawMessage;
  * Created by yf on 2018/8/9.
  */
 public interface AIUIView {
-    void showInitMessage(RawMessage rawMessage);
 
     void showVolume(int arg2);
 
@@ -20,5 +19,5 @@ public interface AIUIView {
 
     void showHotWord(List<String> list);
 
-    void showVoice(RawMessage rawMessage);
+
 }

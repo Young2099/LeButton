@@ -16,7 +16,6 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
-
 import so.chinaso.com.voicemodule.R;
 
 import static android.content.Context.VIBRATOR_SERVICE;
@@ -46,6 +45,7 @@ public class CircleButtonView extends View {
     private float mProgressW = 10f;//圆环宽度
     private boolean isPressed;//当前手指处于按压状态
     private ValueAnimator mProgressAni;//圆弧进度变化
+    private boolean isVadBegin;
 
     public CircleButtonView(Context context) {
         super(context);
@@ -155,6 +155,7 @@ public class CircleButtonView extends View {
             case MotionEvent.ACTION_UP:
                 isPressed = false;
                 isRecording = false;
+                upListener.onUp();
                 mEndTime = System.currentTimeMillis();
                 if (mEndTime - mStartTime < mLongClickTime) {
                     mHandler.removeMessages(WHAT_LONG_CLICK);
@@ -280,6 +281,7 @@ public class CircleButtonView extends View {
         });
     }
 
+
     /**
      * 长按监听器
      */
@@ -298,12 +300,21 @@ public class CircleButtonView extends View {
     public void setOnLongClickListener(OnLongClickListener onLongClickListener) {
         this.onLongClickListener = onLongClickListener;
     }
+    public UpListener upListener ;
+
+    public void setUpListener(UpListener upListener) {
+        this.upListener = upListener;
+    }
 
     /**
      * 点击监听器
      */
     public interface OnClickListener {
         void onClick();
+    }
+
+    public interface  UpListener{
+        void onUp();
     }
 
     public OnClickListener onClickListener;

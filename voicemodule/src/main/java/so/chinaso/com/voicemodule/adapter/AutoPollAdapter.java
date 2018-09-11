@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-
 import java.util.List;
 
 import so.chinaso.com.voicemodule.R;
@@ -36,11 +35,12 @@ public class AutoPollAdapter extends RecyclerView.Adapter<AutoPollAdapter.BaseVi
 
     @Override
     public int getItemCount() {
-        return mData== null ? 0:mData.size();
+        return mData == null ? 0 : mData.size();
     }
 
-    class BaseViewHolder extends RecyclerView.ViewHolder{
+    class BaseViewHolder extends RecyclerView.ViewHolder {
         TextView tv;
+
         public BaseViewHolder(View itemView) {
             super(itemView);
             tv = itemView.findViewById(R.id.tv_content);

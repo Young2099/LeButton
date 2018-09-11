@@ -29,6 +29,17 @@
             android:scaleY="1.2"
             android:src="@drawable/help" />
     </RelativeLayout>
+    <TextView
+        android:id="@+id/voice_close_word"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:padding="10dp"
+        android:layout_below="@+id/rl_help"
+        android:text="你可以这样说"
+        android:visibility="invisible"
+        android:textColor="@color/black"
+        android:textSize="20sp" />
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/voice_recycleView"

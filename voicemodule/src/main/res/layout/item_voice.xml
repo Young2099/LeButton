@@ -3,9 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rl_weather"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="10dp">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
     <com.daasuu.bl.BubbleLayout
         android:id="@+id/message_layout"
@@ -39,7 +38,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="6dp"
         android:padding="8dp"
         app:bl_arrowDirection="right"
         app:bl_arrowHeight="8dp"
@@ -60,111 +59,6 @@
             android:textColor="@android:color/white" />
 
     </com.daasuu.bl.BubbleLayout>
-
-
-    <RelativeLayout
-        android:id="@+id/today_weather"
-        android:layout_width="match_parent"
-        android:layout_height="160dp"
-        android:layout_below="@+id/voice_layout"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/rain"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/city"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:text="北京市 "
-            android:textColor="#ffffff" />
-
-        <TextView
-            android:id="@+id/time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_toRightOf="@+id/city"
-            android:text="08月03日 周四"
-            android:textColor="#ffffff" />
-
-        <TextView
-            android:id="@+id/temp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/time"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:text="22"
-            android:textColor="#ffffff"
-            android:textSize="44sp" />
-
-        <TextView
-            android:id="@+id/weather_detail"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/time"
-            android:layout_marginLeft="20dp"
-            android:layout_marginTop="45dp"
-            android:layout_toRightOf="@+id/temp"
-            android:text="雨"
-            android:textColor="#ffffff"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/air"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_marginBottom="20dp"
-            android:layout_marginLeft="10dp"
-            android:background="@drawable/bg_search"
-            android:gravity="center"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
-            android:text="优" />
-
-        <TextView
-            android:id="@+id/wind"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_marginBottom="20dp"
-            android:layout_marginLeft="10dp"
-            android:layout_toRightOf="@+id/air"
-            android:gravity="center"
-            android:text="南风微风"
-            android:textColor="#ffffff" />
-
-        <ImageView
-            android:id="@+id/weather_icon"
-            android:layout_width="80dp"
-            android:layout_height="50dp"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:layout_marginRight="15dp" />
-
-        <TextView
-            android:id="@+id/tem_range"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentRight="true"
-            android:layout_marginBottom="20dp"
-            android:layout_marginRight="15dp"
-            android:text="20℃ ~ 28℃"
-            android:textColor="#ffffff" />
-    </RelativeLayout>
-
-    <android.support.v7.widget.RecyclerView
-        android:id="@+id/weather_recyclerview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/today_weather"
-        android:layout_marginTop="10dp"
-        android:background="#96abbd" />
 
     <TextView
         android:id="@+id/weather"

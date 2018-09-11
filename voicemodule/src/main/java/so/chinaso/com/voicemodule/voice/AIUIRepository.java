@@ -1,7 +1,11 @@
 package so.chinaso.com.voicemodule.voice;
 
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModel;
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -11,6 +15,8 @@ import com.iflytek.aiui.AIUIConstant;
 import com.iflytek.aiui.AIUIEvent;
 import com.iflytek.aiui.AIUIListener;
 import com.iflytek.aiui.AIUIMessage;
+import com.iflytek.location.result.GPSLocResult;
+import com.iflytek.location.result.NetLocResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,7 +28,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import io.reactivex.Completable;
+import io.reactivex.functions.Action;
+import io.reactivex.schedulers.Schedulers;
+import so.chinaso.com.voicemodule.db.MessageDB;
 import so.chinaso.com.voicemodule.entity.DynamicEntityData;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.entity.VoiceEntity;
@@ -30,7 +42,7 @@ import so.chinaso.com.voicemodule.entity.VoiceEntity;
 /**
  * Created by yf on 2018/8/9.
  */
-public class AIUIRepository {
+public class AIUIRepository extends ViewModel {
     private static final String TAG = AIUIRepository.class.getSimpleName();
     //交互状态
     private int mCurrentState = AIUIConstant.STATE_IDLE;
@@ -41,19 +53,17 @@ public class AIUIRepository {
     private AIUIView mView;
     private ContactRepository contactRepository;
     private JSONObject mPersParams;
-    //    //vad事件
-//    private MutableLiveData<AIUIEvent> mVADEvent = new MutableLiveData<>();
-//    //唤醒和休眠事件
-//    private MutableLiveData<AIUIEvent> mStateEvent = new SingleLiveEvent<>();
-    private String phone_number;
 
     //处理PGS听写(流式听写）的队列
     private String voiceWords;
-    private List<RawMessage> rawMessageList = new ArrayList<>();
+    private boolean mStartLocate = false;
+    private LocationRepo mLocRepo;
+    private final Timer mLocateTimer = new Timer();
 
-    public AIUIRepository(Context mainActivity) {
-        this.context = mainActivity;
-        contactRepository = new ContactRepository(context);
+    //当前消息列表
+    private LiveData<List<RawMessage>> mInteractMsg;
+
+    public AIUIRepository() {
 
     }
 
@@ -106,7 +116,7 @@ public class AIUIRepository {
             mAIUIAgent.sendMessage(syncAthenaMessage);
         } catch (Exception e) {
             e.printStackTrace();
-//            addMessageToDB(new RawMessage(AIUI, TEXT,
+//            addMessageToDB(new RawMessageCache(AIUI, TEXT,
 //                    String.format("上传动态实体数据出错 %s", e.getMessage()).getBytes()));
             Log.e(TAG, "syncDynamicData: 上传动态实体数据出错" + e.getMessage().getBytes());
         }
@@ -143,7 +153,7 @@ public class AIUIRepository {
     }
 
     public void startVoice() {
-        mVadBegin = false;
+        mView.setVadBegin(false);
         startRecordAudio();
     }
 
@@ -238,7 +248,6 @@ public class AIUIRepository {
                 case AIUIConstant.EVENT_VAD: {
 //                    mVADEvent.postValue(event);
                     if (AIUIConstant.VAD_BOS == event.arg1) {
-                        mVadBegin = true;
                         //找到语音前端点
                         mView.setVadBegin(true);
                         //找到语音前端点
@@ -298,29 +307,6 @@ public class AIUIRepository {
 
     }
 
-    /**
-     * processResult:
-     * {"rc":0,
-     * "semantic":[{"intent":"INSTRUCTION","slots":[{"name":"insType","value":"CONFIRM"}]}],
-     * "service":"telephone","uuid":"cida1144f9a@dx00db0ecde832010005",
-     * "text":"是",
-     * "state":{"fg::telephone::default::default":{"insType":"1","operation":"1","state":"default"}},
-     * "used_state":{"insType":"1","operation":"1","state":"default","state_key":"fg::telephone::default::default"},
-     * "dialog_stat":"dataInvalid","save_history":true,"sid":"cida1144f9a@dx00db0ecde832010005"}
-     * <p>
-     * RC O -> 成功
-     * RC 1-> 成功
-     * 2 ->  无效请求
-     * 3 ->  服务器内部出错
-     * 4 ->  服务器不理解或不能处理该文本
-     *
-     * @param semanticResult
-     */
-    private void getJsonString(String semanticResult) {
-        VoiceEntity voiceEntity = new VoiceEntity(semanticResult,voiceWords);
-        mView.showVoice(voiceEntity.getRawMessage());
-    }
-
 
     private void updateVoiceMessageFromIAT(JSONObject cntJson) {
         Log.e(TAG, "updateVoiceMessageFromIAT: " + cntJson);
@@ -369,9 +355,11 @@ public class AIUIRepository {
     }
 
 
-    public void attach(AIUIView mView) {
+    public void attach(AIUIView mView, Context mContext) {
         this.mView = mView;
-
+        this.context = mContext;
+        contactRepository = new ContactRepository(context);
+        mLocRepo = new LocationRepo(context);
     }
 
     public void detachView() {
@@ -380,9 +368,6 @@ public class AIUIRepository {
     }
 
     public void stopAudio() {
-        if (!mVadBegin) {
-            mView.showErrorMessage("您好像么有说话");
-        }
         sendMessage(new AIUIMessage(AIUIConstant.CMD_STOP_RECORD, 0, 0, "data_type=audio,sample_rate=16000", null));
 
     }
@@ -412,13 +397,110 @@ public class AIUIRepository {
         }
     }
 
+    public void useLocationData() {
+        mStartLocate = true;
+
+        mLocRepo.getGPSLoc().observeForever(new Observer<GPSLocResult>() {
+            @Override
+            public void onChanged(@Nullable GPSLocResult gpsLoc) {
+                if (mStartLocate) {
+                    mStartLocate = false;
+                    mLocRepo.stopLocate();
+                    assert gpsLoc != null;
+                    setLoc(gpsLoc.getLon(), gpsLoc.getLat());
+
+                    String location = String.format("GPS location lon %f lat %f", gpsLoc.getLon(), gpsLoc.getLat());
+                    Map<String, String> data = new HashMap<>();
+                    data.put("gpsLoc", location);
+                    fakeAIUIResult(0, "fake.Loc", "已获取使用最新的GPS位置", null, data);
+                    Log.e(TAG, "onChanged: 已获取使用最新的GPS位置");
+                }
+            }
+        });
+
+        mLocateTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (mStartLocate) {
+                    mLocRepo.stopLocate();
+                    mLocRepo.getNetLoc().observeForever(new Observer<NetLocResult>() {
+                        @Override
+                        public void onChanged(@Nullable NetLocResult netLoc) {
+                            if (mStartLocate) {
+                                mStartLocate = false;
+                                mLocRepo.stopLocate();
+                                assert netLoc != null;
+                                setLoc(netLoc.getLon(), netLoc.getLat());
+
+                                String location = String.format("net location city %s, lon %f lat %f", netLoc.getCity(), netLoc.getLon(), netLoc.getLat());
+                                Map<String, String> data = new HashMap<>();
+                                data.put("netLoc", location);
+                                fakeAIUIResult(0, "fake.Loc", "已获取使用最新的网络位置信息", null, data);
+                                Log.e(TAG, "onChanged: 已获取使用最新的GPS位置");
+                            }
+                        }
+                    });
+                }
+            }
+        }, 5000);
+    }
+
+    private void fakeAIUIResult(int i, String s, String text, Object o, Map<String, String> data) {
+
+    }
+
+    /**
+     * 手动设置位置信息
+     *
+     * @param lng
+     * @param lat
+     */
+    public void setLoc(double lng, double lat) {
+        try {
+            JSONObject audioParams = new JSONObject();
+            audioParams.put("msc.lng", String.valueOf(lng));
+            audioParams.put("msc.lat", String.valueOf(lat));
+
+            JSONObject params = new JSONObject();
+            params.put("audioparams", audioParams);
+
+            //完成设置后，在随后的每次会话都会携带该位置信息
+            setParams(params.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setParams(String params) {
+        sendMessage(new AIUIMessage(AIUIConstant.CMD_SET_PARAMS, 0, 0, params, null));
+    }
+
+    /**
+     * processResult:
+     * {"rc":0,
+     * "semantic":[{"intent":"INSTRUCTION","slots":[{"name":"insType","value":"CONFIRM"}]}],
+     * "service":"telephone","uuid":"cida1144f9a@dx00db0ecde832010005",
+     * "text":"是",
+     * "state":{"fg::telephone::default::default":{"insType":"1","operation":"1","state":"default"}},
+     * "used_state":{"insType":"1","operation":"1","state":"default","state_key":"fg::telephone::default::default"},
+     * "dialog_stat":"dataInvalid","save_history":true,"sid":"cida1144f9a@dx00db0ecde832010005"}
+     * <p>
+     * RC O -> 成功
+     * RC 1-> 成功
+     * 2 ->  无效请求
+     * 3 ->  服务器内部出错
+     * 4 ->  服务器不理解或不能处理该文本
+     *
+     * @param semanticResult
+     */
+    private void getJsonString(String semanticResult) {
+        VoiceEntity voiceEntity = new VoiceEntity(semanticResult, voiceWords);
+        addMessageToDB(voiceEntity.getRawMessage());
+        Log.e(TAG, "fuck you : "+voiceEntity.getRawMessage() );
+    }
+
 
     public void initWords() {
-        RawMessage rawMessage = new RawMessage();
-        rawMessage.setVoice(voiceWords);
-        rawMessage.setMessage("你好，young");
-        rawMessage.setIntent("initwords");
-        mView.showInitMessage(rawMessage);
         getHotWord();
     }
 
@@ -436,11 +518,32 @@ public class AIUIRepository {
         list.add("给我来个段子");
         list.add("北京有哪些大学");
         list.add("历史上的今天发生了什么");
-//        list.add("我要学英语");
-//        list.add("难过的反义词");
-//        list.add("关于励志的经典语句");
-//        list.add("给我来个演说");
-//        list.add("来一句英语");
+        list.add("我要学英语");
+        list.add("难过的反义词");
+        list.add("关于励志的经典语句");
+        list.add("给我来个演说");
+        list.add("来一句英语");
         mView.showHotWord(list);
+    }
+
+    public void addMessageToDB(final RawMessage msg) {
+        Completable
+                .complete()
+                .observeOn(Schedulers.io())
+                .subscribe(new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        Log.e(TAG, "run: " + msg);
+                        MessageDB.getInstance(context).messageDao().addMessage(msg);
+                    }
+                });
+    }
+
+    public LiveData<List<RawMessage>> getInteractMsg() {
+        return MessageDB.getInstance(context).messageDao().getAllMessage();
+    }
+
+    public void setmInteractMsg(LiveData<List<RawMessage>> mInteractMsg) {
+        this.mInteractMsg = mInteractMsg;
     }
 }

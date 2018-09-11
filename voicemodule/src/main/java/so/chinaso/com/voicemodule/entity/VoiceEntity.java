@@ -1,12 +1,12 @@
 package so.chinaso.com.voicemodule.entity;
 
-import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
 
 /**
  * Created by yf on 2018/9/3.
@@ -23,7 +23,7 @@ public class VoiceEntity {
             service = object.get("service").getAsString();
         }
         if (("2").equals(object.get("rc").getAsString()) || ("4").equals(object.get("rc").getAsString())) {
-            getListMessage(voiceWords, "对不起主人，不能识别", "not_know", null);
+            setListMessage(voiceWords, "对不起主人，不能识别", "not_know", null);
         } else {
             //基本回答的结果
             String answer = null;
@@ -34,14 +34,6 @@ public class VoiceEntity {
             //如天气回答的data数据
             if (object.has("data")) {
                 result = object.getAsJsonObject("data");
-            }
-            assert service != null;
-            if (!TextUtils.isEmpty(answer)&& service.equals("weather")) {
-                Log.e("TAG", "VoiceEntity: "+voiceWords );
-                getListMessage(voiceWords, answer, service, result);
-            }
-            if(!TextUtils.isEmpty(answer)){
-                getListMessage(voiceWords,answer,service,null);
             }
             //解析关键字段，semantic里面的如自定义动态数据网站url
             if (object.has("semantic")) {
@@ -63,34 +55,29 @@ public class VoiceEntity {
                 }
 
                 Log.e("TAG", "getJsonString: " + intent + "service:" + service + "value:" + value);
-
-                //自定义字段，讯飞国搜客户端跳转网页
+                /**
+                 * 需要特殊处理
+                 * GUOSOU.chinaso_search -> service 自定义字段，讯飞国搜客户端跳转网页
+                 *  app -> service
+                 *  telephone ->service
+                 *
+                 */
                 if ("GUOSOU.open_web".equals(service) && "open_web".equals(intent)) {
-                    getListMessage(voiceWords, normValue, service, null);
+                    setListMessage(voiceWords, normValue, service, null);
+                } else if ("app".equals(service) || "LAUNCH".equals(intent)) {
+                    setListMessage(voiceWords, value, service, null);
                 } else {
-                    getListMessage(voiceWords, value, service, result);
+                    setListMessage(voiceWords, answer, service, result);
                 }
 
 //                if ("telephone".equals(service) && "CONFIRM".equals(value) && "INSTRUCTION".equals(intent)) {
 //                    getSearchMessage(voiceWords, value, service);
 //                }
 
-                //定义搜索词，进入到国搜页面搜索
-//                if ("GUOSOU.chinaso_search".equals(service) && "chinaso_search".equals(intent)) {
-//                    startWeb(voiceWords, value, service);
-//                }
-//                //跳转App
-//                if ("app".equals(service) && "LAUNCH".equals(intent)) {
-//                    startApp(voiceWords, value, service);
-//                }
 
-                /**
-                 * 需要特殊处理
-                 * GUOSOU.chinaso_search -> service
-                 *  app -> service
-                 *  telephone ->service
-                 *
-                 */
+            } else {
+                Log.e("TAG", "VoiceEntity: "+answer );
+                setListMessage(voiceWords, answer, service, result);
             }
         }
     }
@@ -101,12 +88,15 @@ public class VoiceEntity {
      * @param service //意图
      * @param result  // 返回的结果
      */
-    private void getListMessage(String words, String value, String service, JsonObject result) {
+    private void setListMessage(String words, String value, String service, JsonObject result) {
         rawMessage = new RawMessage();
         rawMessage.setIntent(service);
         rawMessage.setVoice(words);
         rawMessage.setMessage(value);
-        rawMessage.setJsonObject(result);
+        if (result != null) {
+            rawMessage.setMsgData(result.toString().getBytes());
+        }
+        rawMessage.setTimestamp(System.currentTimeMillis());
     }
 
 

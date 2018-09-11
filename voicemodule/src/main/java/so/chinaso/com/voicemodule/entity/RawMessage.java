@@ -1,11 +1,13 @@
 package so.chinaso.com.voicemodule.entity;
 
 
-import com.google.gson.JsonObject;
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.PrimaryKey;
 
 /**
  * Created by yf on 2018/8/28.
  */
+@Entity
 public class RawMessage {
     //说的话
     private String voice = "";
@@ -14,9 +16,13 @@ public class RawMessage {
     //跳转的意图
     private String intent;
     //example 天气的数据
-    private JsonObject jsonObject;
+    private byte[] msgData;
     //需要跳转的值，如url和search,word;
     private String value;
+    private boolean isLaunch = true;
+
+    @PrimaryKey
+    public long timestamp;
 
     public String getIntent() {
         return intent;
@@ -42,12 +48,12 @@ public class RawMessage {
         this.message = message;
     }
 
-    public JsonObject getJsonObject() {
-        return jsonObject;
+    public byte[] getMsgData() {
+        return msgData;
     }
 
-    public void setJsonObject(JsonObject jsonObject) {
-        this.jsonObject = jsonObject;
+    public void setMsgData(byte[] jsonObject) {
+        this.msgData = jsonObject;
     }
 
     public String getValue() {
@@ -58,14 +64,30 @@ public class RawMessage {
         this.value = value;
     }
 
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
     @Override
     public String toString() {
-        return "RawMessage{" +
+        return "RawMessageCache{" +
                 "voice='" + voice + '\'' +
                 ", message='" + message + '\'' +
                 ", intent='" + intent + '\'' +
-                ", jsonObject=" + jsonObject +
+                ", msgData=" + msgData +
                 ", value='" + value + '\'' +
                 '}';
+    }
+
+    public boolean isLaunch() {
+        return isLaunch;
+    }
+
+    public void setLaunch(boolean launch) {
+        isLaunch = launch;
     }
 }
