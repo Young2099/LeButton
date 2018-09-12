@@ -1,6 +1,7 @@
 package so.chinaso.com.voicemodule.voice;
 
 import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModel;
 import android.content.Context;
@@ -35,6 +36,7 @@ import io.reactivex.Completable;
 import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
 import so.chinaso.com.voicemodule.db.MessageDB;
+import so.chinaso.com.voicemodule.db.MessageDao;
 import so.chinaso.com.voicemodule.entity.DynamicEntityData;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.entity.VoiceEntity;
@@ -47,113 +49,28 @@ public class AIUIRepository extends ViewModel {
     //交互状态
     private int mCurrentState = AIUIConstant.STATE_IDLE;
     private AIUIAgent mAIUIAgent = null;
-    private Context context;
+    private Context mContext;
     //是否检测到前端点，提示 ’为说话‘ 时判断使用
-    private boolean mVadBegin = false;
-    private AIUIView mView;
-    private ContactRepository contactRepository;
     private JSONObject mPersParams;
 
     //处理PGS听写(流式听写）的队列
     private String voiceWords;
-    private boolean mStartLocate = false;
-    private LocationRepo mLocRepo;
-    private final Timer mLocateTimer = new Timer();
 
     //当前消息列表
     private LiveData<List<RawMessage>> mInteractMsg;
+    //vad事件
+    private MutableLiveData<AIUIEvent> mVADEvent = new MutableLiveData<>();
+    //唤醒和休眠事件
+    private MutableLiveData<AIUIEvent> mStateEvent = new SingleLiveEvent<>();
+    //上传联系人
+    private ContactRepository contactRepository;
 
-    public AIUIRepository() {
-
+    public AIUIRepository(Context context) {
+        mContext = context;
     }
 
-    private void initContract() {
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                List<String> contacts = contactRepository.getContacts();
-
-                StringBuilder contactJson = new StringBuilder();
-                for (String contact : contacts) {
-                    String[] nameNumber = contact.split("\\$\\$");
-                    contactJson.append(String.format("{\"name\": \"%s\", \"phoneNumber\": \"%s\" }\n",
-                            nameNumber[0], nameNumber[1]));
-                }
-                syncDynamicData(new DynamicEntityData(
-                        "IFLYTEK.telephone_contact", "uid", "", contactJson.toString()));
-                putPersParam("uid", "");
-            }
-        }.start();
-    }
-
-    public void getContract() {
-        initContract();
-
-    }
-
-    private void syncDynamicData(DynamicEntityData data) {
-        Log.e(TAG, "syncDynamicData: " + mAIUIAgent);
-        try {
-            // 构造动态实体数据
-            JSONObject syncSchemaJson = new JSONObject();
-            JSONObject paramJson = new JSONObject();
-
-            paramJson.put("id_name", data.idName);
-            paramJson.put("id_value", data.idValue);
-            paramJson.put("res_name", data.resName);
-
-            syncSchemaJson.put("param", paramJson);
-            syncSchemaJson.put("data", Base64.encodeToString(
-                    data.syncData.getBytes(), Base64.DEFAULT | Base64.NO_WRAP));
-
-            // 传入的数据一定要为utf-8编码
-            byte[] syncData = syncSchemaJson.toString().getBytes("utf-8");
-
-            AIUIMessage syncAthenaMessage = new AIUIMessage(AIUIConstant.CMD_SYNC,
-                    AIUIConstant.SYNC_DATA_SCHEMA, 0, "", syncData);
-//            sendMessage(syncAthenaMessage);
-            mAIUIAgent.sendMessage(syncAthenaMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-//            addMessageToDB(new RawMessageCache(AIUI, TEXT,
-//                    String.format("上传动态实体数据出错 %s", e.getMessage()).getBytes()));
-            Log.e(TAG, "syncDynamicData: 上传动态实体数据出错" + e.getMessage().getBytes());
-        }
-    }
-
-    //生效动态实体
-    public void putPersParam(String key, String value) {
-        try {
-            mPersParams = new JSONObject();
-            mPersParams.put(key, value);
-            setPersParams(mPersParams);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * 设置个性化(动态实体和所见即可说)生效参数
-     *
-     * @param persParams
-     */
-    public void setPersParams(JSONObject persParams) {
-        try {
-            //参考文档动态实体生效使用一节
-            JSONObject params = new JSONObject();
-            JSONObject audioParams = new JSONObject();
-            audioParams.put("pers_param", persParams.toString());
-            params.put("audioparams", audioParams);
-
-            sendMessage(new AIUIMessage(AIUIConstant.CMD_SET_PARAMS, 0, 0, params.toString(), null));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
 
     public void startVoice() {
-        mView.setVadBegin(false);
         startRecordAudio();
     }
 
@@ -179,7 +96,7 @@ public class AIUIRepository extends ViewModel {
     private String getAIUIParams() {
         String params = "";
 
-        AssetManager assetManager = context.getResources().getAssets();
+        AssetManager assetManager = mContext.getResources().getAssets();
         try {
             InputStream ins = assetManager.open("cfg/aiui_phone.cfg");
             byte[] buffer = new byte[ins.available()];
@@ -195,6 +112,29 @@ public class AIUIRepository extends ViewModel {
         return params;
     }
 
+    private void initContract() {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                List<String> contacts = contactRepository.getContacts();
+
+                StringBuilder contactJson = new StringBuilder();
+                for (String contact : contacts) {
+                    String[] nameNumber = contact.split("\\$\\$");
+                    contactJson.append(String.format("{\"name\": \"%s\", \"phoneNumber\": \"%s\" }\n",
+                            nameNumber[0], nameNumber[1]));
+                }
+//                syncDynamicData(new DynamicEntityData(
+//                        "IFLYTEK.telephone_contact", "uid", "", contactJson.toString()));
+//                putPersParam("uid", "");
+            }
+        }.start();
+    }
+
+    public void getContracts() {
+        initContract();
+    }
 
     //AIUI事件监听器
     private AIUIListener mAIUIListener = new AIUIListener() {
@@ -203,13 +143,13 @@ public class AIUIRepository extends ViewModel {
         public void onEvent(AIUIEvent event) {
             switch (event.eventType) {
                 case AIUIConstant.EVENT_WAKEUP: {
-//                    mStateEvent.postValue(event);
+                    mStateEvent.postValue(event);
 
                 }
                 break;
 
                 case AIUIConstant.EVENT_SLEEP: {
-//                    mStateEvent.postValue(event);
+                    mStateEvent.postValue(event);
 
                 }
                 break;
@@ -246,20 +186,8 @@ public class AIUIRepository extends ViewModel {
                 break;
 
                 case AIUIConstant.EVENT_VAD: {
-//                    mVADEvent.postValue(event);
-                    if (AIUIConstant.VAD_BOS == event.arg1) {
-                        //找到语音前端点
-                        mView.setVadBegin(true);
-                        //找到语音前端点
+                    mVADEvent.postValue(event);
 
-                    } else if (AIUIConstant.VAD_EOS == event.arg1) {
-                        //找到语音后端点
-                    } else {
-                        Log.e(TAG, "onEvent: " + event.arg2);
-                    }
-                    if (AIUIConstant.VAD_VOL == event.arg1) {
-                        mView.showVolume(event.arg2);
-                    }
                 }
 
                 break;
@@ -355,18 +283,6 @@ public class AIUIRepository extends ViewModel {
     }
 
 
-    public void attach(AIUIView mView, Context mContext) {
-        this.mView = mView;
-        this.context = mContext;
-        contactRepository = new ContactRepository(context);
-        mLocRepo = new LocationRepo(context);
-    }
-
-    public void detachView() {
-        mView = null;
-        stopRecordAudio();
-    }
-
     public void stopAudio() {
         sendMessage(new AIUIMessage(AIUIConstant.CMD_STOP_RECORD, 0, 0, "data_type=audio,sample_rate=16000", null));
 
@@ -388,61 +304,12 @@ public class AIUIRepository extends ViewModel {
         if (null == mAIUIAgent) {
             Log.i(TAG, "create aiui agent");
             //创建AIUIAgent
-            mAIUIAgent = AIUIAgent.createAgent(context, getAIUIParams(), mAIUIListener);
+            mAIUIAgent = AIUIAgent.createAgent(mContext, getAIUIParams(), mAIUIListener);
         }
 
         if (null == mAIUIAgent) {
             final String strErrorTip = "语音服务出错！";
-            mView.showErrorMessage(strErrorTip);
         }
-    }
-
-    public void useLocationData() {
-        mStartLocate = true;
-
-        mLocRepo.getGPSLoc().observeForever(new Observer<GPSLocResult>() {
-            @Override
-            public void onChanged(@Nullable GPSLocResult gpsLoc) {
-                if (mStartLocate) {
-                    mStartLocate = false;
-                    mLocRepo.stopLocate();
-                    assert gpsLoc != null;
-                    setLoc(gpsLoc.getLon(), gpsLoc.getLat());
-
-                    String location = String.format("GPS location lon %f lat %f", gpsLoc.getLon(), gpsLoc.getLat());
-                    Map<String, String> data = new HashMap<>();
-                    data.put("gpsLoc", location);
-                    fakeAIUIResult(0, "fake.Loc", "已获取使用最新的GPS位置", null, data);
-                    Log.e(TAG, "onChanged: 已获取使用最新的GPS位置");
-                }
-            }
-        });
-
-        mLocateTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                if (mStartLocate) {
-                    mLocRepo.stopLocate();
-                    mLocRepo.getNetLoc().observeForever(new Observer<NetLocResult>() {
-                        @Override
-                        public void onChanged(@Nullable NetLocResult netLoc) {
-                            if (mStartLocate) {
-                                mStartLocate = false;
-                                mLocRepo.stopLocate();
-                                assert netLoc != null;
-                                setLoc(netLoc.getLon(), netLoc.getLat());
-
-                                String location = String.format("net location city %s, lon %f lat %f", netLoc.getCity(), netLoc.getLon(), netLoc.getLat());
-                                Map<String, String> data = new HashMap<>();
-                                data.put("netLoc", location);
-                                fakeAIUIResult(0, "fake.Loc", "已获取使用最新的网络位置信息", null, data);
-                                Log.e(TAG, "onChanged: 已获取使用最新的GPS位置");
-                            }
-                        }
-                    });
-                }
-            }
-        }, 5000);
     }
 
     private void fakeAIUIResult(int i, String s, String text, Object o, Map<String, String> data) {
@@ -496,34 +363,6 @@ public class AIUIRepository extends ViewModel {
     private void getJsonString(String semanticResult) {
         VoiceEntity voiceEntity = new VoiceEntity(semanticResult, voiceWords);
         addMessageToDB(voiceEntity.getRawMessage());
-        Log.e(TAG, "fuck you : "+voiceEntity.getRawMessage() );
-    }
-
-
-    public void initWords() {
-        getHotWord();
-    }
-
-    private void getHotWord() {
-        final List<String> list = new ArrayList<>();
-        list.add("今天天气怎么样");
-        list.add("西瓜用英文怎么说");
-        list.add("九九乘法表");
-        list.add("朗读一首李白的诗");
-        list.add("安静的静怎么写");
-        list.add("魑魅魍魉是啥意思");
-        list.add("给中国移动打电话");
-        list.add("周杰伦是谁");
-        list.add("我要查清华大学的分数线");
-        list.add("给我来个段子");
-        list.add("北京有哪些大学");
-        list.add("历史上的今天发生了什么");
-        list.add("我要学英语");
-        list.add("难过的反义词");
-        list.add("关于励志的经典语句");
-        list.add("给我来个演说");
-        list.add("来一句英语");
-        mView.showHotWord(list);
     }
 
     public void addMessageToDB(final RawMessage msg) {
@@ -534,16 +373,98 @@ public class AIUIRepository extends ViewModel {
                     @Override
                     public void run() throws Exception {
                         Log.e(TAG, "run: " + msg);
-                        MessageDB.getInstance(context).messageDao().addMessage(msg);
+                        MessageDB.getInstance(mContext).messageDao().addMessage(msg);
                     }
                 });
     }
 
     public LiveData<List<RawMessage>> getInteractMsg() {
-        return MessageDB.getInstance(context).messageDao().getAllMessage();
+        return MessageDB.getInstance(mContext).messageDao().getAllMessage();
     }
 
-    public void setmInteractMsg(LiveData<List<RawMessage>> mInteractMsg) {
+    public void setInteractMsg(LiveData<List<RawMessage>> mInteractMsg) {
         this.mInteractMsg = mInteractMsg;
     }
+
+    public void sendText(String msg) {
+//        if(mAppendVoiceMsg != null){
+//            //更新上一条未完成的语音消息内容
+//            updateMessage(mAppendVoiceMsg);
+//            mAppendVoiceMsg = null;
+//        }
+        //pers_param用于启用动态实体和所见即可说功能
+        String params = "data_type=text,pers_param={\"appid\":\"\",\"uid\":\"\"}";
+        sendMessage(new AIUIMessage(AIUIConstant.CMD_WRITE, 0, 0,
+                params, msg.getBytes()));
+        voiceWords = msg;
+    }
+
+    public LiveData<AIUIEvent> getVADEvent() {
+        return mVADEvent;
+    }
+
+    public LiveData<AIUIEvent> getStateEvent() {
+        return mStateEvent;
+    }
+
+    private void syncDynamicData(DynamicEntityData data) {
+        Log.e(TAG, "syncDynamicData: " + mAIUIAgent);
+        try {
+            // 构造动态实体数据
+            JSONObject syncSchemaJson = new JSONObject();
+            JSONObject paramJson = new JSONObject();
+
+            paramJson.put("id_name", data.idName);
+            paramJson.put("id_value", data.idValue);
+            paramJson.put("res_name", data.resName);
+
+            syncSchemaJson.put("param", paramJson);
+            syncSchemaJson.put("data", Base64.encodeToString(
+                    data.syncData.getBytes(), Base64.DEFAULT | Base64.NO_WRAP));
+
+            // 传入的数据一定要为utf-8编码
+            byte[] syncData = syncSchemaJson.toString().getBytes("utf-8");
+
+            AIUIMessage syncAthenaMessage = new AIUIMessage(AIUIConstant.CMD_SYNC,
+                    AIUIConstant.SYNC_DATA_SCHEMA, 0, "", syncData);
+//            sendMessage(syncAthenaMessage);
+            mAIUIAgent.sendMessage(syncAthenaMessage);
+        } catch (Exception e) {
+            e.printStackTrace();
+//            addMessageToDB(new RawMessageCache(AIUI, TEXT,
+//                    String.format("上传动态实体数据出错 %s", e.getMessage()).getBytes()));
+            Log.e(TAG, "syncDynamicData: 上传动态实体数据出错" + e.getMessage().getBytes());
+        }
+    }
+
+    //生效动态实体
+    public void putPersParam(String key, String value) {
+        try {
+            mPersParams = new JSONObject();
+            mPersParams.put(key, value);
+            setPersParams(mPersParams);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 设置个性化(动态实体和所见即可说)生效参数
+     *
+     * @param persParams
+     */
+    public void setPersParams(JSONObject persParams) {
+        try {
+            //参考文档动态实体生效使用一节
+            JSONObject params = new JSONObject();
+            JSONObject audioParams = new JSONObject();
+            audioParams.put("pers_param", persParams.toString());
+            params.put("audioparams", audioParams);
+
+            sendMessage(new AIUIMessage(AIUIConstant.CMD_SET_PARAMS, 0, 0, params.toString(), null));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

@@ -5,14 +5,13 @@ import android.arch.core.util.Function;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.Transformations;
 import android.arch.lifecycle.ViewModelProviders;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -23,14 +22,21 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.iflytek.aiui.AIUIConstant;
+import com.iflytek.aiui.AIUIEvent;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import so.chinaso.com.voicemodule.adapter.AutoPollAdapter;
 import so.chinaso.com.voicemodule.adapter.VoiceAdapter;
+import so.chinaso.com.voicemodule.db.MessageDB;
+import so.chinaso.com.voicemodule.db.MessageDao;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.voice.AIUIRepository;
 import so.chinaso.com.voicemodule.voice.AIUIView;
+import so.chinaso.com.voicemodule.voice.ChatViewModel;
 import so.chinaso.com.voicemodule.widget.AutoPollRecyclerView;
 import so.chinaso.com.voicemodule.widget.CircleButtonView;
 import so.chinaso.com.voicemodule.widget.VoiceLineView;
@@ -44,22 +50,23 @@ import so.chinaso.com.voicemodule.widget.VoiceLineView;
  * AppId: 5b695d90
  */
 
-public class VoiceActivity extends AppCompatActivity implements AIUIView, View.OnClickListener {
+public class VoiceActivity extends AppCompatActivity implements View.OnClickListener, ItemClickItem {
     private static String TAG = VoiceActivity.class.getSimpleName();
-
+    public static final Pattern emptyPattern = Pattern.compile("^\\s+$", Pattern.DOTALL);
     private CircleButtonView mStartRecord;
-    private AIUIRepository aiuiRepository;
+    //    private AIUIRepository aiuiRepository;
+    private ChatViewModel chatViewModel;
     private VoiceLineView mVoline;
-    private RecyclerView mRecyclerView;
+    private RecyclerView mVoiceRecy;
     private AutoPollRecyclerView hotWordRecycler;
     private boolean isTouch = false;
     private boolean mVadBegin = false;
-    private List<String> list;
-    private List<RawMessage> currentList = new ArrayList<>();
-    ImageView imageHelp;
-    TextView textWord;
-    ImageView btn_back;
-    private VoiceAdapter adapter;
+    private ImageView imageHelp;
+    private TextView textWord;
+    private ImageView btn_back;
+    private VoiceAdapter mVoiceAdapter;
+    private NestedScrollView mScrollView;
+    private AutoPollAdapter autoPollAdapter;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -75,16 +82,15 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
         imageHelp = findViewById(R.id.voice_help);
         textWord = findViewById(R.id.voice_close_word);
         btn_back = findViewById(R.id.voice_btn_back);
-        mRecyclerView = findViewById(R.id.voice_recycleView);
+        mVoiceRecy = findViewById(R.id.voice_recycleView);
         hotWordRecycler = findViewById(R.id.voice_hot_word_recy);
+        mScrollView = findViewById(R.id.scorllview);
     }
 
     protected void business() {
-        aiuiRepository = ViewModelProviders.of(this).get(AIUIRepository.class);
-        aiuiRepository.attach(this, this);
-        aiuiRepository.initAIUIAgent();
-        aiuiRepository.initWords();
-        aiuiRepository.useLocationData();
+        chatViewModel = ViewModelProviders.of(this).get(ChatViewModel.class);
+        chatViewModel.init(this);
+        chatViewModel.useLocationData();
         initAdapter();
     }
 
@@ -100,17 +106,15 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
                         ViewGroup.LayoutParams.WRAP_CONTENT);
             }
         };
-        mRecyclerView.setLayoutManager(layoutManager);
+        mVoiceRecy.setLayoutManager(layoutManager);
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        final AutoPollAdapter autoPollAdapter = new AutoPollAdapter(list);
-        hotWordRecycler.setAdapter(autoPollAdapter);
-        autoPollAdapter.notifyDataSetChanged();
-        hotWordRecycler.setLayoutManager(new LinearLayoutManager(VoiceActivity.this));
+        mVoiceAdapter = new VoiceAdapter(this);
         mStartRecord.setOnLongClickListener(new CircleButtonView.OnLongClickListener() {
             @Override
             public void onLongClick() {
-                aiuiRepository.stopCloudTTS();
-                aiuiRepository.startVoice();
+                mVadBegin = false;
+                chatViewModel.stopTTS();
+                chatViewModel.startRecord();
             }
 
             @Override
@@ -129,13 +133,17 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
                 if (!mVadBegin) {
                     Toast.makeText(VoiceActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
                 }
-                aiuiRepository.stopAudio();
+                chatViewModel.stopRecord();
 
             }
         });
         imageHelp.setOnClickListener(this);
         btn_back.setOnClickListener(this);
-
+        autoPollAdapter = new AutoPollAdapter(chatViewModel.getVoiceWord());
+        hotWordRecycler.setLayoutManager(new LinearLayoutManager(VoiceActivity.this));
+        hotWordRecycler.setAdapter(autoPollAdapter);
+        autoPollAdapter.notifyDataSetChanged();
+        autoPollAdapter.setClickListener(this);
 //        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 //            @Override
 //            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -203,10 +211,11 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
                         Log.e(TAG, "onTouch: " + d);
                         if (d > 600) {
                             hotWordRecycler.setVisibility(View.GONE);
-                            mRecyclerView.setVisibility(View.VISIBLE);
+                            mVoiceRecy.setVisibility(View.VISIBLE);
                             isTouch = false;
                             imageHelp.setClickable(true);
                             textWord.setVisibility(View.INVISIBLE);
+                            mScrollView.setVisibility(View.GONE);
                         } else {
                             isTouch = false;
                         }
@@ -217,8 +226,7 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
 
         });
 
-        adapter = new VoiceAdapter(this);
-        Transformations.map(aiuiRepository.getInteractMsg(), new Function<List<RawMessage>, List<RawMessage>>() {
+        Transformations.map(chatViewModel.getInteractMessages(), new Function<List<RawMessage>, List<RawMessage>>() {
             @Override
             public List<RawMessage> apply(List<RawMessage> input) {
                 return new ArrayList<>(input);
@@ -236,10 +244,37 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
                     rawMessage1.setIntent("initwords");
                     rawMessage1.setTimestamp(System.currentTimeMillis());
                     list.add(rawMessage1);
-                    aiuiRepository.addMessageToDB(rawMessage1);
+                    chatViewModel.fakeAIUIResult(rawMessage1);
                     showVoiceList(list);
                 } else {
                     showVoiceList(rawMessageList);
+                }
+            }
+        });
+        chatViewModel.getVADEvent().observe(this, new Observer<AIUIEvent>() {
+            @Override
+            public void onChanged(@Nullable AIUIEvent aiuiEvent) {
+                if (aiuiEvent.eventType == AIUIConstant.EVENT_VAD) {
+                    switch (aiuiEvent.arg1) {
+                        case AIUIConstant.VAD_BOS:
+                            mVadBegin = true;
+                            break;
+
+                        //前端点超时消息
+                        case 3:
+                        case AIUIConstant.VAD_EOS: {
+                            //唤醒状态下检测到后端点自动进入待唤醒模式
+//                            if(mState == Constant.STATE_WAKEUP) {
+//                                onWaitingWakeUp();
+//                            }
+                            break;
+                        }
+
+                        //音量消息
+                        case AIUIConstant.VAD_VOL: {
+                            showVolume(aiuiEvent.arg2);
+                        }
+                    }
                 }
             }
         });
@@ -247,9 +282,9 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
 
 
     private void showVoiceList(List<RawMessage> rawMessageList) {
-        adapter.setList(rawMessageList);
-        mRecyclerView.setAdapter(adapter);
-        mRecyclerView.scrollToPosition(adapter.getItemCount() - 1);
+        mVoiceAdapter.setList(rawMessageList);
+        mVoiceRecy.setAdapter(mVoiceAdapter);
+        mVoiceRecy.scrollToPosition(mVoiceAdapter.getItemCount() - 1);
     }
 
     private float dy;
@@ -257,14 +292,15 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        aiuiRepository.detachView();
         if (hotWordRecycler != null) {
             hotWordRecycler.stop();
         }
 
+        MessageDB.getInstance(this).messageDao().deleteMessage();
+
     }
 
-    @Override
+
     public void showVolume(final int arg2) {
         runOnUiThread(new Runnable() {
             @Override
@@ -274,37 +310,21 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
         });
     }
 
-    @Override
-    public void showErrorMessage(String error) {
-        Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
-    }
-
-
-    @Override
-    public void setVadBegin(boolean b) {
-        mVadBegin = b;
-    }
-
-    @Override
-    public void showHotWord(List<String> list) {
-        this.list = list;
-    }
-
 
     @Override
     public void onClick(View v) {
         int i = v.getId();
         if (i == R.id.voice_help) {
-            mRecyclerView.setVisibility(View.GONE);
+            mVoiceRecy.setVisibility(View.GONE);
             textWord.setVisibility(View.VISIBLE);
             hotWordRecycler.setVisibility(View.VISIBLE);
 //            hotWordRecycler.start();
             imageHelp.setClickable(false);
+            mScrollView.setVisibility(View.VISIBLE);
             int resId = R.anim.layout_animation_fall_down;
             LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(VoiceActivity.this, resId);
             hotWordRecycler.setLayoutAnimation(animation);
             hotWordRecycler.scheduleLayoutAnimation();
-
         } else if (i == R.id.voice_close_word) {
             hotWordRecycler.setVisibility(View.GONE);
             imageHelp.setClickable(true);
@@ -313,4 +333,26 @@ public class VoiceActivity extends AppCompatActivity implements AIUIView, View.O
             finish();
         }
     }
+
+    @Override
+    public void clickListener(String voice) {
+        hotWordRecycler.setVisibility(View.GONE);
+        mVoiceRecy.setVisibility(View.VISIBLE);
+        isTouch = false;
+        imageHelp.setClickable(true);
+        textWord.setVisibility(View.INVISIBLE);
+        mScrollView.setVisibility(View.GONE);
+        doSend(voice);
+    }
+
+    private void doSend(String msg) {
+        if (!TextUtils.isEmpty(msg) && !emptyPattern.matcher(msg).matches()) {
+            chatViewModel.sendText(msg);
+//            mChatBinding.editText.setText("");
+        } else {
+            Toast.makeText(this, "发送内容不能为空", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
 }

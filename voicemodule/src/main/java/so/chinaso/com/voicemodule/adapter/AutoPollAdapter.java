@@ -8,7 +8,9 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import so.chinaso.com.voicemodule.ItemClickItem;
 import so.chinaso.com.voicemodule.R;
+import so.chinaso.com.voicemodule.VoiceActivity;
 
 /**
  * created by yf on 2018/8/15.
@@ -20,22 +22,35 @@ public class AutoPollAdapter extends RecyclerView.Adapter<AutoPollAdapter.BaseVi
         this.mData = list;
     }
 
+    private ItemClickItem clickItem;
+
     @Override
     public BaseViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_auto_poll, parent, false);
-        BaseViewHolder holder = new BaseViewHolder(view);
-        return holder;
+        return new BaseViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(BaseViewHolder holder, int position) {
+    public void onBindViewHolder(BaseViewHolder holder, final int position) {
         String data = mData.get(position % mData.size());
         holder.tv.setText(data);
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (clickItem != null) {
+                    clickItem.clickListener(mData.get(position));
+                }
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
         return mData == null ? 0 : mData.size();
+    }
+
+    public void setClickListener(ItemClickItem clickListener) {
+        clickItem = clickListener;
     }
 
     class BaseViewHolder extends RecyclerView.ViewHolder {
@@ -46,4 +61,5 @@ public class AutoPollAdapter extends RecyclerView.Adapter<AutoPollAdapter.BaseVi
             tv = itemView.findViewById(R.id.tv_content);
         }
     }
+
 }

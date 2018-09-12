@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -43,7 +42,6 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     private static final int LAUNCH_APP = 7;
     private List<RawMessage> list;
     private Context mContext;
-    private List<WeatherEntity> weatherEntities;
 
     public VoiceAdapter(Context context) {
         mContext = context;
@@ -82,9 +80,10 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
         }
         switch (getItemViewType(position)) {
             case WEATHER:
-                setWeather(list.get(position), holder);
-                holder.voice.setText(list.get(position).getVoice());
-                holder.message.setText(list.get(position).getMessage());
+                RawMessage rawMessage = list.get(position);
+                setWeather(rawMessage, holder);
+                holder.voice.setText(rawMessage.getVoice());
+                holder.message.setText(rawMessage.getMessage());
                 break;
             case NORMAL:
                 if (position == 0) {
@@ -96,9 +95,10 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
                 holder.message.setText(list.get(position).getMessage());
                 break;
             case RESTAURANT:
-                holder.voice.setText(list.get(position).getVoice());
+                RawMessage restaurantMsg = list.get(position);
+                holder.voice.setText(restaurantMsg.getVoice());
+                showRestaurant(restaurantMsg, holder);
                 holder.message.setText(list.get(position).getMessage());
-                showRestaurant(list.get(position), holder);
                 break;
             case POETRY:
                 holder.voice.setText(list.get(position).getVoice());
@@ -107,37 +107,19 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
             case WEB:
                 setShow(holder, list.get(position));
                 if (list.get(position).isLaunch()) {
-                    Class clazz = null;
-                    try {
-                        clazz = Class.forName("com.chinaso.domino.activity.WebUrlActivity");
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    startWeb(list.get(position),clazz);
+                    getWebIntent(list.get(position));
                 }
                 break;
             case SEARCH:
                 setShow(holder, list.get(position));
                 if (list.get(position).isLaunch()) {
-                    Class webdetailClazz = null;
-                    try {
-                        webdetailClazz = Class.forName("com.chinaso.domino.activity.WebDetailActivity");
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    startWeb(list.get(position),webdetailClazz);
+                    getSearchIntent(list.get(position));
                 }
                 break;
             case LAUNCH_APP:
                 setShow(holder, list.get(position));
                 if (list.get(position).isLaunch()) {
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            bindMsg(list.get(position).getMessage());
-                        }
-                    }).start();
-                    updateMessage(list.get(position));
+                    getAppLaunch(list.get(position));
                 }
                 break;
         }
@@ -149,6 +131,36 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 //                    break;
 
 
+    }
+
+    private void getAppLaunch(final RawMessage rawMessage) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                bindMsg(rawMessage.getMessage());
+            }
+        }).start();
+        updateMessage(rawMessage);
+    }
+
+    private void getSearchIntent(RawMessage rawMessage) {
+        Class webdetailClazz = null;
+        try {
+            webdetailClazz = Class.forName("com.chinaso.domino.activity.WebDetailActivity");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        startWeb(rawMessage, webdetailClazz);
+    }
+
+    private void getWebIntent(RawMessage rawMessage) {
+        Class clazz = null;
+        try {
+            clazz = Class.forName("com.chinaso.domino.activity.WebUrlActivity");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        startWeb(rawMessage, clazz);
     }
 
     private void startWeb(RawMessage rawMessage, Class clazz) {
@@ -174,7 +186,6 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
                 .subscribe(new Action() {
                     @Override
                     public void run() {
-                        Log.e("TAG", "run: " + rawMessage);
                         MessageDB.getInstance(mContext).messageDao().updateMessage(rawMessage);
                     }
                 });
@@ -211,9 +222,20 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
             poetryEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), PoetryEntity.class);
             poetryEntities.add(poetryEntity);
         }
-        holder.poetry_content.setText(poetryEntities.get(0).getShowContent());
-        holder.poetry_author.setText(poetryEntities.get(0).getAuthor());
-        holder.poetry_dynasty.setText(poetryEntities.get(0).getDynasty());
+        StringBuilder stringBuilder = new StringBuilder();
+        String p = poetryEntities.get(0).getShowContent().replaceAll("\\[[a-zA-Z0-9]{2}\\]", "");
+        String[] poetry = p.split("。", p.length() - 2);
+        for (int i = 0; i < poetry.length;
+             i++) {
+            if (i == poetry.length - 1) {
+                stringBuilder.append(poetry[i].replaceAll("\\s*", ""));
+            } else {
+                stringBuilder.append(poetry[i].replaceAll("\\s*", "")).append("。").append("\n");
+            }
+        }
+
+        holder.poetry_content.setText(stringBuilder);
+        holder.poetry_dynasty.setText("("+poetryEntities.get(0).getDynasty()+") "+poetryEntities.get(0).getAuthor());
         holder.poetry_title.setText(poetryEntities.get(0).getTitle());
     }
 
@@ -241,7 +263,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     }
 
 
-    private void setWeather(RawMessage rawMessage,VoiceViewHolder holder) {
+    private void setWeather(RawMessage rawMessage, VoiceViewHolder holder) {
         if ("weather".equals(rawMessage.getIntent())) {
             JsonObject object = new JsonParser().parse(new String(rawMessage.getMsgData())).getAsJsonObject();
             List<WeatherEntity> weatherEntities = getData(object);
@@ -279,7 +301,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 
 
     private List<WeatherEntity> getData(JsonObject jsonObject) {
-        weatherEntities = new ArrayList<>();
+        List<WeatherEntity> weatherEntities = new ArrayList<>();
         WeatherEntity weatherEntity;
         JsonArray data = jsonObject.getAsJsonArray("result");
         for (int i = 0; i < data.size(); i++) {
@@ -287,11 +309,9 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
             weatherEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), WeatherEntity.class);
             weatherEntities.add(weatherEntity);
         }
-        if (weatherEntities == null) {
-            return null;
-        }
         return weatherEntities;
     }
+
 
     @Override
     public int getItemViewType(int position) {

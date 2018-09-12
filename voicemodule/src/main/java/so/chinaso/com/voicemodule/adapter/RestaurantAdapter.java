@@ -24,7 +24,6 @@ public class RestaurantAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 
     public RestaurantAdapter(Context mContext, List<RestaurantEntity> list) {
         this.list = list;
-        Log.e("TAG", "RestaurantAdapter: " + list.size());
         this.mContext = mContext;
     }
 
@@ -38,7 +37,8 @@ public class RestaurantAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     public void onBindViewHolder(@NonNull VoiceViewHolder holder, int position) {
         holder.res_name.setText(list.get(position).getName());
         holder.res_address_detail.setText(list.get(position).getAddress());
-        holder.res_telephone.setText(list.get(position).getPhone());
+        String telephone = list.get(position).getPhone().split(";")[0];
+        holder.res_telephone.setText(telephone);
         RequestOptions requestOptions = new RequestOptions();
         requestOptions.centerCrop();
         Glide.with(mContext).applyDefaultRequestOptions(requestOptions).load(list.get(position).getImg()).into(holder.res_image);

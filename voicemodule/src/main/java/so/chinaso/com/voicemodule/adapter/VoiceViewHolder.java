@@ -65,7 +65,6 @@ public class VoiceViewHolder extends BaseViewHolder {
         res_address_detail = getView(R.id.res_address_detail);
         res_telephone = getView(R.id.res_telephone);
         poetry_content = getView(R.id.poetry);
-        poetry_author = getView(R.id.poetry_author);
         poetry_dynasty = getView(R.id.poetry_dynasty);
         poetry_title = getView(R.id.poetry_title);
     }

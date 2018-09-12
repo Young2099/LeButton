@@ -10,8 +10,8 @@
 
     <ImageView
         android:id="@+id/res_image"
-        android:layout_width="110dp"
-        android:layout_height="80dp" />
+        android:layout_width="120dp"
+        android:layout_height="90dp" />
 
     <TextView
         android:id="@+id/res_name"
@@ -30,18 +30,20 @@
         android:layout_below="@+id/res_name"
         android:layout_marginLeft="10dp"
         android:layout_marginTop="5dp"
+        android:textSize="13sp"
         android:layout_toRightOf="@+id/res_image"
-        android:textColor="#dedede" />
+        android:textColor="#8d8d8d" />
 
     <TextView
         android:id="@+id/res_telephone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
+        android:textSize="13sp"
         android:layout_marginLeft="10dp"
         android:layout_toRightOf="@+id/res_image"
         android:text="1111111111"
-        android:textColor="#dedede" />
+        android:textColor="#8d8d8d" />
 
     <TextView
         android:layout_width="wrap_content"
