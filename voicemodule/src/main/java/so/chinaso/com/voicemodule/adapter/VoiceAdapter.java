@@ -26,8 +26,10 @@ import so.chinaso.com.voicemodule.R;
 import so.chinaso.com.voicemodule.db.MessageDB;
 import so.chinaso.com.voicemodule.entity.PoetryEntity;
 import so.chinaso.com.voicemodule.entity.RawMessage;
-import so.chinaso.com.voicemodule.entity.RestaurantEntity;
-import so.chinaso.com.voicemodule.entity.WeatherEntity;
+import so.chinaso.com.voicemodule.intent.RestaurantHandler;
+import so.chinaso.com.voicemodule.intent.StoryHandler;
+import so.chinaso.com.voicemodule.intent.WeatherHandler;
+import so.chinaso.com.voicemodule.voice.PlayerViewModel;
 
 /**
  * Created by yf on 2018/8/27.
@@ -40,33 +42,37 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     private static final int WEB = 5;
     private static final int SEARCH = 6;
     private static final int LAUNCH_APP = 7;
+    private static final int STORY = 8;
     private List<RawMessage> list;
     private Context mContext;
+    private PlayerViewModel playerViewModel;
 
-    public VoiceAdapter(Context context) {
+    public VoiceAdapter(Context context, PlayerViewModel playerViewModel) {
         mContext = context;
+        this.playerViewModel = playerViewModel;
     }
 
     @Override
     public VoiceViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        VoiceViewHolder weatherViewHolder = null;
+        VoiceViewHolder viewHolder = null;
         switch (viewType) {
             case NORMAL:
             case WEB:
             case SEARCH:
+            case STORY:
             case LAUNCH_APP:
-                weatherViewHolder = new VoiceViewHolder(parent, R.layout.item_voice);
+                viewHolder = new VoiceViewHolder(parent, R.layout.item_voice);
                 break;
             case WEATHER:
             case RESTAURANT:
-                weatherViewHolder = new VoiceViewHolder(parent, R.layout.item_total_weather);
+                viewHolder = new VoiceViewHolder(parent, R.layout.item_total_weather);
                 break;
             case POETRY:
-                weatherViewHolder = new VoiceViewHolder(parent, R.layout.item_poetry);
+                viewHolder = new VoiceViewHolder(parent, R.layout.item_poetry);
                 break;
 
         }
-        return weatherViewHolder;
+        return viewHolder;
     }
 
     /**
@@ -80,10 +86,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
         }
         switch (getItemViewType(position)) {
             case WEATHER:
-                RawMessage rawMessage = list.get(position);
-                setWeather(rawMessage, holder);
-                holder.voice.setText(rawMessage.getVoice());
-                holder.message.setText(rawMessage.getMessage());
+                setWeather(holder, list.get(position));
                 break;
             case NORMAL:
                 if (position == 0) {
@@ -95,13 +98,9 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
                 holder.message.setText(list.get(position).getMessage());
                 break;
             case RESTAURANT:
-                RawMessage restaurantMsg = list.get(position);
-                holder.voice.setText(restaurantMsg.getVoice());
-                showRestaurant(restaurantMsg, holder);
-                holder.message.setText(list.get(position).getMessage());
+                setRestaurant(list.get(position), holder);
                 break;
             case POETRY:
-                holder.voice.setText(list.get(position).getVoice());
                 setPoetry(list.get(position), holder);
                 break;
             case WEB:
@@ -121,6 +120,9 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
                 if (list.get(position).isLaunch()) {
                     getAppLaunch(list.get(position));
                 }
+                break;
+            case STORY:
+                StoryHandler handler = new StoryHandler(playerViewModel,list.get(position).getMsgData());
                 break;
         }
 
@@ -213,6 +215,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 
     private void setPoetry(RawMessage rawMessage, VoiceViewHolder holder) {
 //        String answer = rawMessage.getMessage().replaceAll("\\[[a-zA-Z0-9]{2}\\]", "");
+        holder.voice.setText(rawMessage.getVoice());
         List<PoetryEntity> poetryEntities = new ArrayList<>();
         PoetryEntity poetryEntity;
         JsonObject object = new JsonParser().parse(new String(rawMessage.getMsgData())).getAsJsonObject();
@@ -235,81 +238,27 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
         }
 
         holder.poetry_content.setText(stringBuilder);
-        holder.poetry_dynasty.setText("("+poetryEntities.get(0).getDynasty()+") "+poetryEntities.get(0).getAuthor());
+        holder.poetry_dynasty.setText("(" + poetryEntities.get(0).getDynasty() + ") " + poetryEntities.get(0).getAuthor());
         holder.poetry_title.setText(poetryEntities.get(0).getTitle());
     }
 
 
-    private void showRestaurant(RawMessage rawMessage, VoiceViewHolder holder) {
-        holder.today_weather.setVisibility(View.GONE);
+    private void setRestaurant(RawMessage rawMessage, VoiceViewHolder holder) {
+        holder.voice.setText(rawMessage.getVoice());
+        holder.message.setText(rawMessage.getMessage());
         holder.mWeatherRecycler.setLayoutManager(new LinearLayoutManager(mContext));
         holder.mWeatherRecycler.setBackgroundColor(mContext.getResources().getColor(R.color.white));
-        RestaurantAdapter adapter = new RestaurantAdapter(mContext, getRes(rawMessage.getMsgData()));
+        RestaurantAdapter adapter = new RestaurantAdapter(mContext, new RestaurantHandler().getFormatContent(rawMessage.getMsgData()));
         holder.mWeatherRecycler.setAdapter(adapter);
     }
 
-    private List<RestaurantEntity> getRes(byte[] jsonObject) {
-        List<RestaurantEntity> list = new ArrayList<>();
-        RestaurantEntity restaurantEntity;
-        JsonObject jsonObject1 = new JsonParser().parse(new String(jsonObject)).getAsJsonObject();
-        JsonArray data = jsonObject1.getAsJsonArray("result");
-        for (int i = 0; i < data.size(); i++) {
-            Gson objectMapper = new Gson();
-            restaurantEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), RestaurantEntity.class);
-            list.add(restaurantEntity);
-        }
 
-        return list;
-    }
-
-
-    private void setWeather(RawMessage rawMessage, VoiceViewHolder holder) {
-        if ("weather".equals(rawMessage.getIntent())) {
-            JsonObject object = new JsonParser().parse(new String(rawMessage.getMsgData())).getAsJsonObject();
-            List<WeatherEntity> weatherEntities = getData(object);
-            holder.mWeatherRecycler.setLayoutManager(new LinearLayoutManager(mContext));
-            WeatherAdapter adapter = new WeatherAdapter(weatherEntities);
-            holder.mWeatherRecycler.setAdapter(adapter);
-            /**
-             * 0 晴天
-             * 1 云
-             * 2 阴
-             * 4 雷阵雨
-             * 7 小雨
-             * 8 中雨
-             */
-            if (weatherEntities != null && weatherEntities.size() != 0) {
-                holder.city.setText(weatherEntities.get(0).getCity());
-                holder.weather_detail.setText(weatherEntities.get(0).getWeather());
-                holder.airQuality.setText(weatherEntities.get(0).getAir());
-                holder.tempRange.setText(weatherEntities.get(0).getTempRange());
-                holder.temp.setText(weatherEntities.get(0).getTemp());
-                holder.wind.setText(weatherEntities.get(0).getWind());
-                Glide.with(mContext).load(weatherEntities.get(0).getImg()).into(holder.weather_icon);
-                String date = weatherEntities.get(0).getDate();
-                String year = date.split("-")[0];
-                String month = date.split("-")[1];
-                String day = date.split("-")[2];
-                String dateC = year + "年" + month + "月" + day + "日";
-                holder.time.setText(dateC);
-                if ("0".equals(weatherEntities.get(0).getWeatherType())) {
-//                        holder.today_weather.setBackgroundResource(R.mipmap.qing);
-                }
-            }
-        }
-    }
-
-
-    private List<WeatherEntity> getData(JsonObject jsonObject) {
-        List<WeatherEntity> weatherEntities = new ArrayList<>();
-        WeatherEntity weatherEntity;
-        JsonArray data = jsonObject.getAsJsonArray("result");
-        for (int i = 0; i < data.size(); i++) {
-            Gson objectMapper = new Gson();
-            weatherEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), WeatherEntity.class);
-            weatherEntities.add(weatherEntity);
-        }
-        return weatherEntities;
+    private void setWeather(VoiceViewHolder holder, RawMessage rawMessage) {
+        holder.voice.setText(rawMessage.getVoice());
+        holder.message.setText(rawMessage.getMessage());
+        holder.mWeatherRecycler.setLayoutManager(new LinearLayoutManager(mContext));
+        WeatherAdapter adapter = new WeatherAdapter(mContext, new WeatherHandler().getFormatContent(rawMessage.getMsgData()));
+        holder.mWeatherRecycler.setAdapter(adapter);
     }
 
 
@@ -335,10 +284,14 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
             case "app":
                 type = LAUNCH_APP;
                 break;
+            case "story":
+                type = STORY;
+                break;
             default:
                 type = NORMAL;
                 break;
         }
+
         return type;
     }
 

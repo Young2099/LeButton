@@ -19,16 +19,8 @@ public class VoiceViewHolder extends BaseViewHolder {
     public TextView message;
     public TextView voice;
     public TextView weather;
-    public RelativeLayout today_weather;
     public RecyclerView mWeatherRecycler;
-    public TextView time;
-    public TextView city;
-    public TextView temp;
-    public TextView airQuality;
-    public TextView wind;
-    public TextView weather_detail;
-    public TextView tempRange;
-    public ImageView weather_icon;
+
     public RelativeLayout rl_weather;
     public BubbleLayout voice_layout;
     public BubbleLayout message_layout;
@@ -47,16 +39,7 @@ public class VoiceViewHolder extends BaseViewHolder {
         message = getView(R.id.message);
         voice = getView(R.id.voice);
         weather = getView(R.id.weather);
-        today_weather = getView(R.id.today_weather);
         mWeatherRecycler = getView(R.id.weather_recyclerview);
-        time = getView(R.id.time);
-        city = getView(R.id.city);
-        temp = getView(R.id.temp);
-        airQuality = getView(R.id.air);
-        wind = getView(R.id.wind);
-        weather_detail = getView(R.id.weather_detail);
-        tempRange = getView(R.id.tem_range);
-        weather_icon = getView(R.id.weather_icon);
         rl_weather = getView(R.id.rl_weather);
         voice_layout = getView(R.id.voice_layout);
         message_layout = getView(R.id.message_layout);

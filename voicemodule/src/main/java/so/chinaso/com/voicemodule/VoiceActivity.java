@@ -7,6 +7,7 @@ import android.arch.lifecycle.Transformations;
 import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,9 +17,11 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,9 +37,11 @@ import so.chinaso.com.voicemodule.adapter.VoiceAdapter;
 import so.chinaso.com.voicemodule.db.MessageDB;
 import so.chinaso.com.voicemodule.db.MessageDao;
 import so.chinaso.com.voicemodule.entity.RawMessage;
+import so.chinaso.com.voicemodule.intent.player.PlayState;
 import so.chinaso.com.voicemodule.voice.AIUIRepository;
 import so.chinaso.com.voicemodule.voice.AIUIView;
 import so.chinaso.com.voicemodule.voice.ChatViewModel;
+import so.chinaso.com.voicemodule.voice.PlayerViewModel;
 import so.chinaso.com.voicemodule.widget.AutoPollRecyclerView;
 import so.chinaso.com.voicemodule.widget.CircleButtonView;
 import so.chinaso.com.voicemodule.widget.VoiceLineView;
@@ -67,6 +72,7 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
     private VoiceAdapter mVoiceAdapter;
     private NestedScrollView mScrollView;
     private AutoPollAdapter autoPollAdapter;
+    private PlayerViewModel playerViewModel;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -89,6 +95,8 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
 
     protected void business() {
         chatViewModel = ViewModelProviders.of(this).get(ChatViewModel.class);
+        playerViewModel = ViewModelProviders.of(this).get(PlayerViewModel.class);
+        playerViewModel.init(this);
         chatViewModel.init(this);
         chatViewModel.useLocationData();
         initAdapter();
@@ -108,7 +116,7 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
         };
         mVoiceRecy.setLayoutManager(layoutManager);
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        mVoiceAdapter = new VoiceAdapter(this);
+        mVoiceAdapter = new VoiceAdapter(this,playerViewModel);
         mStartRecord.setOnLongClickListener(new CircleButtonView.OnLongClickListener() {
             @Override
             public void onLongClick() {
@@ -278,6 +286,14 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
                 }
             }
         });
+
+        //监听播放器状态，更新控制界面
+        playerViewModel.getPlayState().observe(this, new Observer<PlayState>() {
+            @Override
+            public void onChanged(@Nullable PlayState playState) {
+
+            }
+        });
     }
 
 
@@ -296,7 +312,7 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
             hotWordRecycler.stop();
         }
 
-        MessageDB.getInstance(this).messageDao().deleteMessage();
+//        MessageDB.getInstance(this).messageDao().deleteMessage();
 
     }
 
