@@ -3,13 +3,11 @@
     package="so.chinaso.com.voicemodule">
 
 
-    <application
-        android:theme="@style/AppTheme">
+    <application>
         <activity
-            android:name=".VoiceActivity"
+            android:name=".ChatMessageActivity"
             android:label="@string/title_activity_voice"
-            android:launchMode="singleTop"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:launchMode="singleTop">
             <intent-filter>
                 <!--<action android:name="android.intent.action.VIEW"/>-->
 

@@ -15,10 +15,9 @@ import so.chinaso.com.voicemodule.adapter.BaseViewHolder;
 /**
  * Created by yf on 2018/9/7.
  */
-public class VoiceViewHolder extends BaseViewHolder {
+public class ChatMessageHolder extends BaseViewHolder {
     public TextView message;
     public TextView voice;
-    public TextView weather;
     public RecyclerView mWeatherRecycler;
 
     public RelativeLayout rl_weather;
@@ -34,11 +33,10 @@ public class VoiceViewHolder extends BaseViewHolder {
     public TextView poetry_title;
 
 
-    public VoiceViewHolder(ViewGroup parent, int resId) {
+    public ChatMessageHolder(ViewGroup parent, int resId) {
         super(parent, resId);
         message = getView(R.id.message);
         voice = getView(R.id.voice);
-        weather = getView(R.id.weather);
         mWeatherRecycler = getView(R.id.weather_recyclerview);
         rl_weather = getView(R.id.rl_weather);
         voice_layout = getView(R.id.voice_layout);

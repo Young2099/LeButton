@@ -11,4 +11,6 @@ public abstract class IntentHandler<T> {
     }
 
     public abstract List<T> getFormatContent(byte[] data);
+
+
 }

@@ -10,7 +10,6 @@ import java.util.List;
 
 import so.chinaso.com.voicemodule.ItemClickItem;
 import so.chinaso.com.voicemodule.R;
-import so.chinaso.com.voicemodule.VoiceActivity;
 
 /**
  * created by yf on 2018/8/15.

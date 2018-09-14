@@ -71,7 +71,7 @@ public class AIUIPlayer {
             public void onPositionDiscontinuity(int reason) {
                 super.onPositionDiscontinuity(reason);
                 mCurrentIndex = mPlayer.getCurrentWindowIndex();
-                if(mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
+                if (mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
                     SongInfo info = songList.get(mCurrentIndex);
                     mState.postValue(new PlayState(mActive, true, info.songName));
                 }
@@ -81,7 +81,7 @@ public class AIUIPlayer {
             public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
                 super.onTracksChanged(trackGroups, trackSelections);
                 mCurrentIndex = mPlayer.getCurrentWindowIndex();
-                if(mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
+                if (mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
                     SongInfo info = songList.get(mCurrentIndex);
                     mState.postValue(new PlayState(mActive, true, info.songName));
                 }
@@ -90,10 +90,10 @@ public class AIUIPlayer {
             @Override
             public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
                 super.onPlayerStateChanged(playWhenReady, playbackState);
-                if(playWhenReady) {
+                if (playWhenReady) {
                     mActive = true;
                 }
-                if(mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
+                if (mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
                     SongInfo info = songList.get(mCurrentIndex);
                     mState.postValue(new PlayState(mActive, playWhenReady, info.songName));
                 }
@@ -101,7 +101,7 @@ public class AIUIPlayer {
         });
     }
 
-    public void setPreSongList(List<SongInfo> list){
+    public void setPreSongList(List<SongInfo> list) {
         this.preSongList = list;
     }
 
@@ -114,25 +114,27 @@ public class AIUIPlayer {
 
     /**
      * 播放歌曲列表
+     *
      * @param list 歌曲列表
      */
     public void playList(List<SongInfo> list) {
         songList = list;
-        if(songList == null) {
+        if (songList == null) {
             songList = new ArrayList<>();
         }
         DynamicConcatenatingMediaSource source = new DynamicConcatenatingMediaSource();
-        for (SongInfo info : list) {
-            DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
-            // Produces DataSource instances through which media data is loaded.
-            DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(mContext,
-                    Util.getUserAgent(mContext, "yourApplicationName"), bandwidthMeter);
-            ExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
-            Uri uri = Uri.parse(info.audioPath);
-            MediaSource mediaSource = new ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null);
+//        for (SongInfo info : list) {
+//
+//        }
+        DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
+        // Produces DataSource instances through which media data is loaded.
+        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(mContext,
+                Util.getUserAgent(mContext, "yourApplicationName"), bandwidthMeter);
+        ExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
+        Uri uri = Uri.parse(songList.get(0).audioPath);
+        MediaSource mediaSource = new ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null);
 
-            source.addMediaSource(mediaSource);
-        }
+        source.addMediaSource(mediaSource);
 
         mPlayer.prepare(source);
         mPlayer.setPlayWhenReady(true);
@@ -140,6 +142,7 @@ public class AIUIPlayer {
 
     /**
      * 获取播放器当前状态
+     *
      * @return 当前状态
      */
     public LiveData<PlayState> getLiveState() {

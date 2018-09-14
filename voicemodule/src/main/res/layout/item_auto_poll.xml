@@ -15,4 +15,5 @@
         android:text="hello"
         android:textColor="@color/black"
         android:textSize="16sp" />
+
 </LinearLayout>

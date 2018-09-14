@@ -4,7 +4,6 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -18,7 +17,7 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
 
-import so.chinaso.com.voicemodule.VoiceActivity;
+import so.chinaso.com.voicemodule.ChatMessageActivity;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
@@ -45,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this,VoiceActivity.class));
+                startActivity(new Intent(MainActivity.this,ChatMessageActivity.class));
             }
         });
     }

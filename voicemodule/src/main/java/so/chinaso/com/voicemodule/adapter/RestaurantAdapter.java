@@ -3,8 +3,6 @@ package so.chinaso.com.voicemodule.adapter;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
-import android.text.TextUtils;
-import android.util.Log;
 import android.view.ViewGroup;
 
 import com.bumptech.glide.Glide;
@@ -18,7 +16,7 @@ import so.chinaso.com.voicemodule.entity.RestaurantEntity;
 /**
  * Created by yf on 2018/9/7.
  */
-public class RestaurantAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
+public class RestaurantAdapter extends RecyclerView.Adapter<ChatMessageHolder> {
     private List<RestaurantEntity> list;
     private Context mContext;
 
@@ -29,12 +27,12 @@ public class RestaurantAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 
     @NonNull
     @Override
-    public VoiceViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new VoiceViewHolder(parent, R.layout.item_restaurant);
+    public ChatMessageHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new ChatMessageHolder(parent, R.layout.item_restaurant);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull VoiceViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ChatMessageHolder holder, int position) {
         holder.res_name.setText(list.get(position).getName());
         holder.res_address_detail.setText(list.get(position).getAddress());
         String telephone = list.get(position).getPhone().split(";")[0];

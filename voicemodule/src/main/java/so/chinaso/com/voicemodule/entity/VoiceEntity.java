@@ -54,7 +54,8 @@ public class VoiceEntity {
                     }
                 }
 
-                Log.e("TAG", "getJsonString: " + intent + "service:" + service + "value:" + value);
+                Log.e("TAG", "getJsonString: " + intent + "service:" + service + "value:" + value
+                +"result:"+result);
                 /**
                  * 需要特殊处理
                  * GUOSOU.chinaso_search -> service 自定义字段，讯飞国搜客户端跳转网页

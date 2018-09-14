@@ -7,14 +7,13 @@ import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.bumptech.glide.Glide;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,12 +28,14 @@ import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.intent.RestaurantHandler;
 import so.chinaso.com.voicemodule.intent.StoryHandler;
 import so.chinaso.com.voicemodule.intent.WeatherHandler;
+import so.chinaso.com.voicemodule.intent.player.AIUIPlayer;
+import so.chinaso.com.voicemodule.intent.player.PoetryHandler;
 import so.chinaso.com.voicemodule.voice.PlayerViewModel;
 
 /**
  * Created by yf on 2018/8/27.
  */
-public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
+public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageHolder> {
     private static final int WEATHER = 1;
     private static final int NORMAL = 2;
     private static final int RESTAURANT = 3;
@@ -47,28 +48,28 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     private Context mContext;
     private PlayerViewModel playerViewModel;
 
-    public VoiceAdapter(Context context, PlayerViewModel playerViewModel) {
+    public ChatMessageAdapter(Context context, PlayerViewModel playerViewModel) {
         mContext = context;
         this.playerViewModel = playerViewModel;
     }
 
     @Override
-    public VoiceViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        VoiceViewHolder viewHolder = null;
+    public ChatMessageHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        ChatMessageHolder viewHolder = null;
         switch (viewType) {
             case NORMAL:
             case WEB:
             case SEARCH:
             case STORY:
             case LAUNCH_APP:
-                viewHolder = new VoiceViewHolder(parent, R.layout.item_voice);
+                viewHolder = new ChatMessageHolder(parent, R.layout.item_voice);
                 break;
             case WEATHER:
             case RESTAURANT:
-                viewHolder = new VoiceViewHolder(parent, R.layout.item_total_weather);
+                viewHolder = new ChatMessageHolder(parent, R.layout.item_total_weather);
                 break;
             case POETRY:
-                viewHolder = new VoiceViewHolder(parent, R.layout.item_poetry);
+                viewHolder = new ChatMessageHolder(parent, R.layout.item_poetry);
                 break;
 
         }
@@ -80,7 +81,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
      * @param position
      */
     @Override
-    public void onBindViewHolder(VoiceViewHolder holder, final int position) {
+    public void onBindViewHolder(ChatMessageHolder holder, final int position) {
         if (list.get(position) == null) {
             return;
         }
@@ -122,7 +123,12 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
                 }
                 break;
             case STORY:
-                StoryHandler handler = new StoryHandler(playerViewModel,list.get(position).getMsgData());
+                holder.voice.setText(list.get(position).getVoice());
+                holder.message.setText(list.get(position).getMessage());
+                if (list.get(position).isLaunch()) {
+                    getStory(list.get(position).getMsgData());
+                    updateMessage(list.get(position));
+                }
                 break;
         }
 
@@ -132,6 +138,35 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
 ////                    startActivity(intent);
 //                    break;
 
+
+    }
+
+    private void getStory(byte[] msgData) {
+        if (msgData == null) {
+            return;
+        }
+        JSONObject jsonObject = null;
+        try {
+            jsonObject = new JSONObject(new String(msgData));
+            List<AIUIPlayer.SongInfo> songList = new ArrayList<>();
+            JSONArray list = jsonObject.optJSONArray("result");
+            if (list != null) {
+                for (int index = 0; index < list.length(); index++) {
+                    JSONObject audio = list.optJSONObject(index);
+                    String audioPath = audio.optString("playUrl");
+                    String songName = audio.optString("name");
+                    String author = audio.optString("author");
+                    songList.add(new AIUIPlayer.SongInfo(author, songName, audioPath));
+                    if (songList.size() != 0) {
+                        playerViewModel.playList(songList);
+                        Log.e("TAG", "getStory: " + songList.get(0).songName);
+                    }
+                }
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -173,7 +208,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
         updateMessage(rawMessage);
     }
 
-    private void setShow(VoiceViewHolder holder, RawMessage rawMessage) {
+    private void setShow(ChatMessageHolder holder, RawMessage rawMessage) {
         holder.message_layout.setVisibility(View.GONE);
         holder.voice.setText(rawMessage.getVoice());
         holder.voice_layout.setVisibility(View.VISIBLE);
@@ -213,18 +248,13 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
         }
     }
 
-    private void setPoetry(RawMessage rawMessage, VoiceViewHolder holder) {
+    private void setPoetry(RawMessage rawMessage, ChatMessageHolder holder) {
 //        String answer = rawMessage.getMessage().replaceAll("\\[[a-zA-Z0-9]{2}\\]", "");
         holder.voice.setText(rawMessage.getVoice());
-        List<PoetryEntity> poetryEntities = new ArrayList<>();
-        PoetryEntity poetryEntity;
-        JsonObject object = new JsonParser().parse(new String(rawMessage.getMsgData())).getAsJsonObject();
-        JsonArray data = object.getAsJsonArray("result");
-        for (int i = 0; i < data.size(); i++) {
-            Gson objectMapper = new Gson();
-            poetryEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), PoetryEntity.class);
-            poetryEntities.add(poetryEntity);
+        if (rawMessage.getMsgData() == null) {
+            return;
         }
+        List<PoetryEntity> poetryEntities = new PoetryHandler().getFormatContent(rawMessage.getMsgData());
         StringBuilder stringBuilder = new StringBuilder();
         String p = poetryEntities.get(0).getShowContent().replaceAll("\\[[a-zA-Z0-9]{2}\\]", "");
         String[] poetry = p.split("。", p.length() - 2);
@@ -243,7 +273,10 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     }
 
 
-    private void setRestaurant(RawMessage rawMessage, VoiceViewHolder holder) {
+    private void setRestaurant(RawMessage rawMessage, ChatMessageHolder holder) {
+        if (rawMessage.getMsgData() == null) {
+            return;
+        }
         holder.voice.setText(rawMessage.getVoice());
         holder.message.setText(rawMessage.getMessage());
         holder.mWeatherRecycler.setLayoutManager(new LinearLayoutManager(mContext));
@@ -253,7 +286,10 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceViewHolder> {
     }
 
 
-    private void setWeather(VoiceViewHolder holder, RawMessage rawMessage) {
+    private void setWeather(ChatMessageHolder holder, RawMessage rawMessage) {
+        if (rawMessage.getMsgData() == null) {
+            return;
+        }
         holder.voice.setText(rawMessage.getVoice());
         holder.message.setText(rawMessage.getMessage());
         holder.mWeatherRecycler.setLayoutManager(new LinearLayoutManager(mContext));

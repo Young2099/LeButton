@@ -29,54 +29,79 @@
             android:scaleY="1.2"
             android:src="@drawable/help" />
     </RelativeLayout>
-    <RelativeLayout
+
+    <android.support.design.widget.CoordinatorLayout
+        android:id="@+id/control_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <TextView
-            android:text="白雪"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-        <ImageView
-            android:src="@drawable/close"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </RelativeLayout>
-    <TextView
-        android:id="@+id/voice_close_word"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:padding="10dp"
-        android:layout_below="@+id/rl_help"
-        android:text="你可以这样说"
-        android:visibility="invisible"
-        android:textColor="@color/black"
-        android:textSize="20sp" />
+        android:layout_below="@+id/rl_help">
+
+        <RelativeLayout
+            android:id="@+id/play_control"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="6dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/story_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:text="白雪"
+                android:textSize="18sp" />
+
+            <ImageView
+                android:id="@+id/story_pause"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="10dp"
+                android:layout_toLeftOf="@+id/story_close"
+                android:src="@drawable/chat_pause" />
+
+            <ImageView
+                android:id="@+id/story_play"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="10dp"
+                android:layout_toLeftOf="@+id/story_close"
+                android:src="@drawable/chat_play"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/story_close"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_marginRight="10dp"
+                android:src="@drawable/chat_close" />
+        </RelativeLayout>
+
+    </android.support.design.widget.CoordinatorLayout>
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/voice_recycleView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/voice_voiceLine"
-        android:layout_below="@+id/rl_help"
-        android:layout_marginBottom="20dp"
-        android:layout_marginTop="10dp" />
+        android:layout_below="@+id/control_container"
+        android:layout_marginBottom="20dp" />
 
     <android.support.v4.widget.NestedScrollView
         android:id="@+id/scorllview"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@id/voice_voiceLine"
-        android:visibility="gone"
-        android:layout_below="@+id/rl_help">
+        android:layout_below="@+id/rl_help"
+        android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/ll_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:orientation="vertical"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:orientation="vertical">
 
             <so.chinaso.com.voicemodule.widget.AutoPollRecyclerView
                 android:id="@+id/voice_hot_word_recy"

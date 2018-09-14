@@ -8,6 +8,7 @@ import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.SwipeDismissBehavior;
 import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -21,7 +22,7 @@ import android.view.animation.AlphaAnimation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,13 +34,9 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import so.chinaso.com.voicemodule.adapter.AutoPollAdapter;
-import so.chinaso.com.voicemodule.adapter.VoiceAdapter;
-import so.chinaso.com.voicemodule.db.MessageDB;
-import so.chinaso.com.voicemodule.db.MessageDao;
+import so.chinaso.com.voicemodule.adapter.ChatMessageAdapter;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.intent.player.PlayState;
-import so.chinaso.com.voicemodule.voice.AIUIRepository;
-import so.chinaso.com.voicemodule.voice.AIUIView;
 import so.chinaso.com.voicemodule.voice.ChatViewModel;
 import so.chinaso.com.voicemodule.voice.PlayerViewModel;
 import so.chinaso.com.voicemodule.widget.AutoPollRecyclerView;
@@ -55,8 +52,8 @@ import so.chinaso.com.voicemodule.widget.VoiceLineView;
  * AppId: 5b695d90
  */
 
-public class VoiceActivity extends AppCompatActivity implements View.OnClickListener, ItemClickItem {
-    private static String TAG = VoiceActivity.class.getSimpleName();
+public class ChatMessageActivity extends AppCompatActivity implements View.OnClickListener, ItemClickItem {
+    private static String TAG = ChatMessageActivity.class.getSimpleName();
     public static final Pattern emptyPattern = Pattern.compile("^\\s+$", Pattern.DOTALL);
     private CircleButtonView mStartRecord;
     //    private AIUIRepository aiuiRepository;
@@ -67,12 +64,17 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
     private boolean isTouch = false;
     private boolean mVadBegin = false;
     private ImageView imageHelp;
-    private TextView textWord;
     private ImageView btn_back;
-    private VoiceAdapter mVoiceAdapter;
+    private ChatMessageAdapter chatMessageAdapter;
     private NestedScrollView mScrollView;
     private AutoPollAdapter autoPollAdapter;
     private PlayerViewModel playerViewModel;
+    private CoordinatorLayout controlContainer;
+    private RelativeLayout playControl;
+    private ImageView mStoryPause;
+    private ImageView mStoryPlay;
+    private ImageView mContainerClose;
+    private TextView mStoryName;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -86,11 +88,16 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
         mStartRecord = findViewById(R.id.voice_circle);
         mVoline = findViewById(R.id.voice_voiceLine);
         imageHelp = findViewById(R.id.voice_help);
-        textWord = findViewById(R.id.voice_close_word);
         btn_back = findViewById(R.id.voice_btn_back);
         mVoiceRecy = findViewById(R.id.voice_recycleView);
         hotWordRecycler = findViewById(R.id.voice_hot_word_recy);
         mScrollView = findViewById(R.id.scorllview);
+        controlContainer = findViewById(R.id.control_container);
+        playControl = findViewById(R.id.play_control);
+        mStoryPause = findViewById(R.id.story_pause);
+        mContainerClose = findViewById(R.id.story_close);
+        mStoryName = findViewById(R.id.story_name);
+        mStoryPlay = findViewById(R.id.story_play);
     }
 
     protected void business() {
@@ -107,6 +114,7 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
      */
     @SuppressLint("ClickableViewAccessibility")
     private void initAdapter() {
+
         LinearLayoutManager layoutManager = new LinearLayoutManager(this) {
             @Override
             public RecyclerView.LayoutParams generateDefaultLayoutParams() {
@@ -116,12 +124,20 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
         };
         mVoiceRecy.setLayoutManager(layoutManager);
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        mVoiceAdapter = new VoiceAdapter(this,playerViewModel);
+        chatMessageAdapter = new ChatMessageAdapter(this, playerViewModel);
+
+        autoPollAdapter = new AutoPollAdapter(chatViewModel.getVoiceWord());
+        hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatMessageActivity.this));
+        hotWordRecycler.setAdapter(autoPollAdapter);
+        autoPollAdapter.notifyDataSetChanged();
+
         mStartRecord.setOnLongClickListener(new CircleButtonView.OnLongClickListener() {
             @Override
             public void onLongClick() {
-                mVadBegin = false;
                 chatViewModel.stopTTS();
+                mVadBegin = false;
+                playerViewModel.pause();
+
                 chatViewModel.startRecord();
             }
 
@@ -139,19 +155,14 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
             @Override
             public void onUp() {
                 if (!mVadBegin) {
-                    Toast.makeText(VoiceActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ChatMessageActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
                 }
                 chatViewModel.stopRecord();
 
             }
         });
-        imageHelp.setOnClickListener(this);
-        btn_back.setOnClickListener(this);
-        autoPollAdapter = new AutoPollAdapter(chatViewModel.getVoiceWord());
-        hotWordRecycler.setLayoutManager(new LinearLayoutManager(VoiceActivity.this));
-        hotWordRecycler.setAdapter(autoPollAdapter);
-        autoPollAdapter.notifyDataSetChanged();
-        autoPollAdapter.setClickListener(this);
+
+
 //        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 //            @Override
 //            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -191,11 +202,11 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
 //                            mRecyclerView.requestLayout();
 //                            final AutoPollAdapter voiceAdapter = new AutoPollAdapter(list);
 //                            mRecyclerView.setVisibility(View.GONE);
-//                            hotWordRecycler.setLayoutManager(new LinearLayoutManager(VoiceActivity.this));
+//                            hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatMessageActivity.this));
 //                            hotWordRecycler.setVisibility(View.VISIBLE);
 //                            hotWordRecycler.start();
 //                            int resId = R.anim.layout_animation_fall_down;
-//                            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(VoiceActivity.this, resId);
+//                            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatMessageActivity.this, resId);
 //                            hotWordRecycler.setLayoutAnimation(animation);
 //                            hotWordRecycler.setAdapter(voiceAdapter);
 //                            voiceAdapter.notifyDataSetChanged();
@@ -222,7 +233,6 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
                             mVoiceRecy.setVisibility(View.VISIBLE);
                             isTouch = false;
                             imageHelp.setClickable(true);
-                            textWord.setVisibility(View.INVISIBLE);
                             mScrollView.setVisibility(View.GONE);
                         } else {
                             isTouch = false;
@@ -291,16 +301,60 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
         playerViewModel.getPlayState().observe(this, new Observer<PlayState>() {
             @Override
             public void onChanged(@Nullable PlayState playState) {
+                if (playState.active && playControl.getVisibility() == View.GONE) {
+                    Log.e(TAG, "onChanged story: "+playState.info);
+                    controlContainer.setVisibility(View.VISIBLE);
+                    playControl.setVisibility(View.VISIBLE);
+                    mStoryName.setText(playState.info);
+                    //滑动停止当前播放并隐藏播放控制条
+                    SwipeDismissBehavior<View> swipe = new SwipeDismissBehavior();
+                    swipe.setSwipeDirection(SwipeDismissBehavior.SWIPE_DIRECTION_START_TO_END);
+                    swipe.setListener(new SwipeDismissBehavior.OnDismissListener() {
+                        @Override
+                        public void onDismiss(View view) {
+                            controlContainer.setVisibility(View.GONE);
+                            playControl.setVisibility(View.GONE);
+                            playerViewModel.stop();
+                        }
 
+                        @Override
+                        public void onDragStateChanged(int state) {
+
+                        }
+                    });
+
+                    //将隐藏的播放控制条恢复
+                    CoordinatorLayout.LayoutParams coordinatorParams =
+                            (CoordinatorLayout.LayoutParams) playControl.getLayoutParams();
+                    coordinatorParams.setBehavior(swipe);
+
+                    AlphaAnimation appearAnimation = new AlphaAnimation(0, 1);
+                    appearAnimation.setDuration(500);
+                    playControl.startAnimation(appearAnimation);
+
+                    CoordinatorLayout.LayoutParams tParams = (CoordinatorLayout.LayoutParams) playControl.getLayoutParams();
+                    tParams.setMargins(0, 0, 0, 0);
+                    playControl.requestLayout();
+                    playControl.setAlpha(1.0f);
+                }
             }
+
         });
+
+        imageHelp.setOnClickListener(this);
+        btn_back.setOnClickListener(this);
+        autoPollAdapter.setClickListener(this);
+        mStoryPause.setOnClickListener(this);
+        mContainerClose.setOnClickListener(this);
+        mStoryPlay.setOnClickListener(this);
+
     }
 
 
     private void showVoiceList(List<RawMessage> rawMessageList) {
-        mVoiceAdapter.setList(rawMessageList);
-        mVoiceRecy.setAdapter(mVoiceAdapter);
-        mVoiceRecy.scrollToPosition(mVoiceAdapter.getItemCount() - 1);
+        chatMessageAdapter.setList(rawMessageList);
+        mVoiceRecy.setAdapter(chatMessageAdapter);
+        mVoiceRecy.scrollToPosition(chatMessageAdapter.getItemCount() - 1);
     }
 
     private float dy;
@@ -329,25 +383,35 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
 
     @Override
     public void onClick(View v) {
+
         int i = v.getId();
         if (i == R.id.voice_help) {
             mVoiceRecy.setVisibility(View.GONE);
-            textWord.setVisibility(View.VISIBLE);
             hotWordRecycler.setVisibility(View.VISIBLE);
 //            hotWordRecycler.start();
             imageHelp.setClickable(false);
             mScrollView.setVisibility(View.VISIBLE);
             int resId = R.anim.layout_animation_fall_down;
-            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(VoiceActivity.this, resId);
+            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatMessageActivity.this, resId);
             hotWordRecycler.setLayoutAnimation(animation);
             hotWordRecycler.scheduleLayoutAnimation();
-        } else if (i == R.id.voice_close_word) {
-            hotWordRecycler.setVisibility(View.GONE);
-            imageHelp.setClickable(true);
 
         } else if (i == R.id.voice_btn_back) {
             finish();
+        } else if (i == R.id.story_pause) {
+            playerViewModel.pause();
+            mStoryPlay.setVisibility(View.VISIBLE);
+            mStoryPause.setVisibility(View.GONE);
+        } else if (i == R.id.story_close) {
+            controlContainer.setVisibility(View.GONE);
+            playControl.setVisibility(View.GONE);
+            playerViewModel.stop();
+        } else if (i == R.id.story_play) {
+            playerViewModel.play();
+            mStoryPause.setVisibility(View.VISIBLE);
+            mStoryPlay.setVisibility(View.GONE);
         }
+
     }
 
     @Override
@@ -356,7 +420,6 @@ public class VoiceActivity extends AppCompatActivity implements View.OnClickList
         mVoiceRecy.setVisibility(View.VISIBLE);
         isTouch = false;
         imageHelp.setClickable(true);
-        textWord.setVisibility(View.INVISIBLE);
         mScrollView.setVisibility(View.GONE);
         doSend(voice);
     }
