@@ -1,5 +1,6 @@
 package so.chinaso.com.voicemodule;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.arch.core.util.Function;
 import android.arch.lifecycle.Observer;
@@ -19,6 +20,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import io.reactivex.Observable;
 import so.chinaso.com.voicemodule.adapter.AutoPollAdapter;
 import so.chinaso.com.voicemodule.adapter.ChatMessageAdapter;
 import so.chinaso.com.voicemodule.entity.RawMessage;
@@ -52,7 +55,7 @@ import so.chinaso.com.voicemodule.widget.VoiceLineView;
  * AppId: 5b695d90
  */
 
-public class ChatMessageActivity extends AppCompatActivity implements View.OnClickListener, ItemClickItem {
+public class ChatMessageActivity extends AppCompatActivity implements View.OnClickListener {
     private static String TAG = ChatMessageActivity.class.getSimpleName();
     public static final Pattern emptyPattern = Pattern.compile("^\\s+$", Pattern.DOTALL);
     private CircleButtonView mStartRecord;
@@ -134,11 +137,11 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
         mStartRecord.setOnLongClickListener(new CircleButtonView.OnLongClickListener() {
             @Override
             public void onLongClick() {
-                chatViewModel.stopTTS();
                 mVadBegin = false;
+                chatViewModel.stopTTS();
                 playerViewModel.pause();
-
                 chatViewModel.startRecord();
+
             }
 
             @Override
@@ -157,10 +160,21 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
                 if (!mVadBegin) {
                     Toast.makeText(ChatMessageActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
                 }
+                chatViewModel.stopTTS();
                 chatViewModel.stopRecord();
 
             }
         });
+//        mStartRecord.setOnClickListener(new CircleButtonView.OnClickListener() {
+//            @Override
+//            public void onClick() {
+//                if (!mVadBegin) {
+//                    Toast.makeText(ChatMessageActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
+//                }
+//                chatViewModel.stopTTS();
+//                chatViewModel.stopRecord();
+//            }
+//        });
 
 
 //        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -186,7 +200,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //            }
 //
 //        });
-//
+
 //        mRecyclerView.setOnTouchListener(new View.OnTouchListener() {
 //            @Override
 //            public boolean onTouch(View v, MotionEvent event) {
@@ -218,7 +232,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //            }
 //        });
 
-        hotWordRecycler.setOnTouchListener(new View.OnTouchListener() {
+        mScrollView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -227,7 +241,6 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
                         break;
                     case MotionEvent.ACTION_MOVE:
                         float d = event.getY() - dy;
-                        Log.e(TAG, "onTouch: " + d);
                         if (d > 600) {
                             hotWordRecycler.setVisibility(View.GONE);
                             mVoiceRecy.setVisibility(View.VISIBLE);
@@ -242,6 +255,18 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
                 return isTouch;
             }
 
+        });
+        hotWordRecycler.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                switch (motionEvent.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dy = motionEvent.getY();
+                        Log.e(TAG, "onTouch: "+dy );
+                        break;
+                }
+                return false;
+            }
         });
 
         Transformations.map(chatViewModel.getInteractMessages(), new Function<List<RawMessage>, List<RawMessage>>() {
@@ -302,10 +327,10 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
             @Override
             public void onChanged(@Nullable PlayState playState) {
                 if (playState.active && playControl.getVisibility() == View.GONE) {
-                    Log.e(TAG, "onChanged story: "+playState.info);
+                    Log.e(TAG, "onChanged story: " + playState.info);
                     controlContainer.setVisibility(View.VISIBLE);
                     playControl.setVisibility(View.VISIBLE);
-                    mStoryName.setText(playState.info);
+                    mStoryName.setText("正在播放" + playState.info);
                     //滑动停止当前播放并隐藏播放控制条
                     SwipeDismissBehavior<View> swipe = new SwipeDismissBehavior();
                     swipe.setSwipeDirection(SwipeDismissBehavior.SWIPE_DIRECTION_START_TO_END);
@@ -343,7 +368,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 
         imageHelp.setOnClickListener(this);
         btn_back.setOnClickListener(this);
-        autoPollAdapter.setClickListener(this);
+//        autoPollAdapter.setClickListener(this);
         mStoryPause.setOnClickListener(this);
         mContainerClose.setOnClickListener(this);
         mStoryPlay.setOnClickListener(this);
@@ -414,24 +439,24 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 
     }
 
-    @Override
-    public void clickListener(String voice) {
-        hotWordRecycler.setVisibility(View.GONE);
-        mVoiceRecy.setVisibility(View.VISIBLE);
-        isTouch = false;
-        imageHelp.setClickable(true);
-        mScrollView.setVisibility(View.GONE);
-        doSend(voice);
-    }
+//    @Override
+//    public void clickListener(String voice) {
+//
+//        doSend(voice);
+//    }
 
     private void doSend(String msg) {
         if (!TextUtils.isEmpty(msg) && !emptyPattern.matcher(msg).matches()) {
             chatViewModel.sendText(msg);
+            hotWordRecycler.setVisibility(View.GONE);
+            mVoiceRecy.setVisibility(View.VISIBLE);
+            isTouch = false;
+            imageHelp.setClickable(true);
+            mScrollView.setVisibility(View.GONE);
 //            mChatBinding.editText.setText("");
         } else {
             Toast.makeText(this, "发送内容不能为空", Toast.LENGTH_SHORT).show();
         }
     }
-
 
 }

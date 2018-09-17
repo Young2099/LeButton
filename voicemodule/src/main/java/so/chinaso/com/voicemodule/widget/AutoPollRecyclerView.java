@@ -15,7 +15,7 @@ import java.lang.ref.WeakReference;
 public class AutoPollRecyclerView extends RecyclerView {
 
     private static final long TIME_AUTO_POLL = 40;
-        AutoPollTask autoPollTask;
+    AutoPollTask autoPollTask;
     private boolean running; //表示是否正在自动轮询
     private boolean canRun;//表示是否可以自动轮询
 
@@ -60,8 +60,10 @@ public class AutoPollRecyclerView extends RecyclerView {
     public boolean onTouchEvent(MotionEvent e) {
         switch (e.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                if (running)
+                if (running) {
                     stop();
+                }
+                requestDisallowInterceptTouchEvent(false);
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:

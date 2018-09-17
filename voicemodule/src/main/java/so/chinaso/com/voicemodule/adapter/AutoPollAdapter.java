@@ -33,14 +33,14 @@ public class AutoPollAdapter extends RecyclerView.Adapter<AutoPollAdapter.BaseVi
     public void onBindViewHolder(BaseViewHolder holder, final int position) {
         String data = mData.get(position % mData.size());
         holder.tv.setText(data);
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (clickItem != null) {
-                    clickItem.clickListener(mData.get(position));
-                }
-            }
-        });
+//        holder.itemView.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if (clickItem != null) {
+//                    clickItem.clickListener(mData.get(position));
+//                }
+//            }
+//        });
     }
 
     @Override

@@ -17,6 +17,7 @@ import com.bumptech.glide.Glide;
 import java.util.List;
 
 import so.chinaso.com.voicemodule.R;
+import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.entity.WeatherEntity;
 
 /**
@@ -58,9 +59,10 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ItemView
     public void onBindViewHolder(ItemViewHolder holder, int position) {
         switch (getItemViewType(position)) {
             case WEAT_NORMAL:
-                holder.week.setText(list.get(position - 1).getWeek());
-                holder.temp_detail.setText(list.get(position - 1).getTempRange());
-                holder.weather_detail.setText(list.get(position - 1).getWeather());
+                WeatherEntity weatherEntity = list.get(position-1);
+                holder.week.setText(weatherEntity.getWeek());
+                holder.temp_detail.setText(weatherEntity.getTempRange());
+                holder.weather_detail.setText(weatherEntity.getWeather());
                 if (position == 0) {
                     holder.toady_show.setVisibility(View.VISIBLE);
                 }
@@ -74,23 +76,31 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ItemView
                  * 7 小雨
                  * 8 中雨
                  */
-
                 if (list != null && list.size() != 0) {
-                    holder.city.setText(list.get(0).getCity());
-                    holder.weather_detail.setText(list.get(0).getWeather());
-                    holder.airQuality.setText(list.get(0).getAir());
-                    holder.tempRange.setText(list.get(0).getTempRange());
-                    holder.temp.setText(list.get(0).getTemp());
-                    holder.wind.setText(list.get(0).getWind());
-                    Glide.with(context).load(list.get(0).getImg()).into(holder.weather_icon);
-                    String date = list.get(0).getDate();
+                    WeatherEntity weatherEntity1 = list.get(0);
+                    Log.e("TAG", "ocdcdcd: "+weatherEntity1.toString() );
+                    holder.city.setText(weatherEntity1.getCity());
+                    holder.weather_detail.setText(weatherEntity1.getWeather());
+                    holder.airQuality.setText(weatherEntity1.getAir());
+                    holder.tempRange.setText(weatherEntity1.getTempRange());
+                    holder.temp.setText(weatherEntity1.getTemp());
+                    holder.wind.setText(weatherEntity1.getWind());
+                    Glide.with(context).load(weatherEntity1.getImg()).into(holder.weather_icon);
+                    String date = weatherEntity1.getDate();
                     String year = date.split("-")[0];
                     String month = date.split("-")[1];
                     String day = date.split("-")[2];
                     String dateC = year + "年" + month + "月" + day + "日";
-                    holder.time.setText(dateC);
-                    if ("0".equals(list.get(0).getWeatherType())) {
-//                        holder.today_weather.setBackgroundResource(R.mipmap.qing);
+                    holder.time.setText(dateC+" "+weatherEntity1.getWeek());
+                    Log.e("TAG", "onBindViewHolder: "+list.get(0).getWeatherType() );
+                    if ("0".equals(weatherEntity1.getWeatherType())) {
+                        holder.weather_rl.setBackgroundResource(R.drawable.sunny);
+                    }else if ("1".equals(weatherEntity1.getWeatherType())){
+                        holder.weather_rl.setBackgroundResource(R.drawable.cloud);
+                    }else if ("2".equals(weatherEntity1.getWeatherType())){
+                        holder.weather_rl.setBackgroundResource(R.drawable.yin);
+                    }else if ("4".equals(weatherEntity1.getWeatherType())){
+                        holder.weather_rl.setBackgroundResource(R.drawable.rain);
                     }
                 }
                 break;
@@ -115,6 +125,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ItemView
         TextView airQuality;
         TextView wind;
         TextView tempRange;
+        RelativeLayout weather_rl;
         ImageView weather_icon;
 
         public ItemViewHolder(View itemView) {
@@ -131,6 +142,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ItemView
             weather_detail = itemView.findViewById(R.id.weather_detail);
             tempRange = itemView.findViewById(R.id.tem_range);
             weather_icon = itemView.findViewById(R.id.weather_icon);
+            weather_rl = itemView.findViewById(R.id.today_weather);
         }
     }
 

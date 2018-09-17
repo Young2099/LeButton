@@ -1,5 +1,7 @@
 package so.chinaso.com.voicemodule.intent;
 
+import android.util.Log;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -30,6 +32,7 @@ public class WeatherHandler extends IntentHandler<WeatherEntity> {
             weatherEntity = objectMapper.fromJson(data.get(i).getAsJsonObject(), WeatherEntity.class);
             weatherEntities.add(weatherEntity);
         }
+        Log.e("TAG", "getData: "+weatherEntities.get(0).toString());
         return weatherEntities;
     }
 
