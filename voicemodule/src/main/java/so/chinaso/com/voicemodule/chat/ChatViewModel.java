@@ -1,4 +1,4 @@
-package so.chinaso.com.voicemodule.voice;
+package so.chinaso.com.voicemodule.chat;
 
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
@@ -17,7 +17,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import so.chinaso.com.voicemodule.entity.DynamicEntityData;
+import javax.inject.Inject;
+
 import so.chinaso.com.voicemodule.entity.RawMessage;
 
 /**
@@ -27,18 +28,22 @@ public class ChatViewModel extends ViewModel {
     private ContactRepository contactRepository;
     private AIUIRepository mRepository;
     private Context mContext;
-    private LocationRepo mLocRepo;
+    private LocationRepository mLocRepo;
 
 
     private boolean mStartLocate = false;
     private final Timer mLocateTimer = new Timer();
 
-    public void init(Context context) {
+    @Inject
+    public ChatViewModel(Context context,
+                         AIUIRepository messagesRepository,
+                         ContactRepository contactRepository,
+                         LocationRepository locationRepo){
         mContext = context;
-        mRepository = new AIUIRepository(context);
-        contactRepository = new ContactRepository(context);
-        mLocRepo = new LocationRepo(context);
-        mRepository.initAIUIAgent();
+        mRepository = messagesRepository;
+        this.contactRepository = contactRepository;
+        mLocRepo = locationRepo;
+
     }
 
     public LiveData<List<RawMessage>> getInteractMessages() {

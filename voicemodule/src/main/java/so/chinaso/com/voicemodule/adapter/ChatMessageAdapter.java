@@ -18,19 +18,21 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import io.reactivex.Completable;
 import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
 import so.chinaso.com.voicemodule.R;
 import so.chinaso.com.voicemodule.db.MessageDB;
+import so.chinaso.com.voicemodule.db.MessageDao;
 import so.chinaso.com.voicemodule.entity.PoetryEntity;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.intent.RestaurantHandler;
-import so.chinaso.com.voicemodule.intent.StoryHandler;
 import so.chinaso.com.voicemodule.intent.WeatherHandler;
 import so.chinaso.com.voicemodule.intent.player.AIUIPlayer;
 import so.chinaso.com.voicemodule.intent.player.PoetryHandler;
-import so.chinaso.com.voicemodule.voice.PlayerViewModel;
+import so.chinaso.com.voicemodule.chat.PlayerViewModel;
 
 /**
  * Created by yf on 2018/8/27.
@@ -47,10 +49,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageHolder> 
     private List<RawMessage> list;
     private Context mContext;
     private PlayerViewModel playerViewModel;
-
-    public ChatMessageAdapter(Context context, PlayerViewModel playerViewModel) {
+    private MessageDao messageDao;
+    @Inject
+    public ChatMessageAdapter(Context context, PlayerViewModel playerViewModel, MessageDao dao) {
         mContext = context;
         this.playerViewModel = playerViewModel;
+        messageDao = dao;
     }
 
     @Override
@@ -223,7 +227,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageHolder> 
                 .subscribe(new Action() {
                     @Override
                     public void run() {
-                        MessageDB.getInstance(mContext).messageDao().updateMessage(rawMessage);
+                        messageDao.updateMessage(rawMessage);
                     }
                 });
     }

@@ -1,10 +1,10 @@
 package so.chinaso.com.voicemodule;
 
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.arch.core.util.Function;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.Transformations;
+import android.arch.lifecycle.ViewModelProvider;
 import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -20,7 +20,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
@@ -35,13 +34,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import io.reactivex.Observable;
+import javax.inject.Inject;
+
+import dagger.android.AndroidInjection;
+import dagger.android.HasActivityInjector;
 import so.chinaso.com.voicemodule.adapter.AutoPollAdapter;
 import so.chinaso.com.voicemodule.adapter.ChatMessageAdapter;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.intent.player.PlayState;
-import so.chinaso.com.voicemodule.voice.ChatViewModel;
-import so.chinaso.com.voicemodule.voice.PlayerViewModel;
+import so.chinaso.com.voicemodule.chat.ChatViewModel;
+import so.chinaso.com.voicemodule.chat.PlayerViewModel;
 import so.chinaso.com.voicemodule.widget.AutoPollRecyclerView;
 import so.chinaso.com.voicemodule.widget.CircleButtonView;
 import so.chinaso.com.voicemodule.widget.VoiceLineView;
@@ -55,11 +57,10 @@ import so.chinaso.com.voicemodule.widget.VoiceLineView;
  * AppId: 5b695d90
  */
 
-public class ChatMessageActivity extends AppCompatActivity implements View.OnClickListener {
-    private static String TAG = ChatMessageActivity.class.getSimpleName();
+public class ChatActivity extends AppCompatActivity implements View.OnClickListener {
+    private static String TAG = ChatActivity.class.getSimpleName();
     public static final Pattern emptyPattern = Pattern.compile("^\\s+$", Pattern.DOTALL);
     private CircleButtonView mStartRecord;
-    //    private AIUIRepository aiuiRepository;
     private ChatViewModel chatViewModel;
     private VoiceLineView mVoline;
     private RecyclerView mVoiceRecy;
@@ -68,9 +69,12 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
     private boolean mVadBegin = false;
     private ImageView imageHelp;
     private ImageView btn_back;
-    private ChatMessageAdapter chatMessageAdapter;
+
+    @Inject
+    ChatMessageAdapter chatMessageAdapter;
+    @Inject
+    ViewModelProvider.Factory mViewModelFactory;
     private NestedScrollView mScrollView;
-    private AutoPollAdapter autoPollAdapter;
     private PlayerViewModel playerViewModel;
     private CoordinatorLayout controlContainer;
     private RelativeLayout playControl;
@@ -82,8 +86,14 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AndroidInjection.inject(ChatActivity.this);
         setContentView(R.layout.activity_voice);
         initLayout();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
         business();
     }
 
@@ -104,10 +114,8 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
     }
 
     protected void business() {
-        chatViewModel = ViewModelProviders.of(this).get(ChatViewModel.class);
-        playerViewModel = ViewModelProviders.of(this).get(PlayerViewModel.class);
-        playerViewModel.init(this);
-        chatViewModel.init(this);
+        chatViewModel = ViewModelProviders.of(this, mViewModelFactory).get(ChatViewModel.class);
+        playerViewModel = ViewModelProviders.of(this, mViewModelFactory).get(PlayerViewModel.class);
         chatViewModel.useLocationData();
         initAdapter();
     }
@@ -127,10 +135,9 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
         };
         mVoiceRecy.setLayoutManager(layoutManager);
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        chatMessageAdapter = new ChatMessageAdapter(this, playerViewModel);
 
-        autoPollAdapter = new AutoPollAdapter(chatViewModel.getVoiceWord());
-        hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatMessageActivity.this));
+        AutoPollAdapter autoPollAdapter = new AutoPollAdapter(chatViewModel.getVoiceWord());
+        hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatActivity.this));
         hotWordRecycler.setAdapter(autoPollAdapter);
         autoPollAdapter.notifyDataSetChanged();
 
@@ -158,7 +165,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
             @Override
             public void onUp() {
                 if (!mVadBegin) {
-                    Toast.makeText(ChatMessageActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ChatActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
                 }
                 chatViewModel.stopTTS();
                 chatViewModel.stopRecord();
@@ -169,7 +176,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //            @Override
 //            public void onClick() {
 //                if (!mVadBegin) {
-//                    Toast.makeText(ChatMessageActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
+//                    Toast.makeText(ChatActivity.this, "您好像并没有开始说话", Toast.LENGTH_LONG).show();
 //                }
 //                chatViewModel.stopTTS();
 //                chatViewModel.stopRecord();
@@ -177,7 +184,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //        });
 
 
-//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+//        hotWordRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
 //            @Override
 //            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
 //                //当前RecyclerView显示出来的最后一个的item的position
@@ -188,6 +195,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //                    RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
 //                    if (layoutManager instanceof LinearLayoutManager) {
 //                        lastPosition = ((LinearLayoutManager) layoutManager).findLastVisibleItemPosition();
+//                        ((LinearLayoutManager) layoutManager).findLastCompletelyVisibleItemPosition()
 //                    }
 //                    isFlag = lastPosition == recyclerView.getLayoutManager().getItemCount() - 1;
 //
@@ -216,11 +224,11 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
 //                            mRecyclerView.requestLayout();
 //                            final AutoPollAdapter voiceAdapter = new AutoPollAdapter(list);
 //                            mRecyclerView.setVisibility(View.GONE);
-//                            hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatMessageActivity.this));
+//                            hotWordRecycler.setLayoutManager(new LinearLayoutManager(ChatActivity.this));
 //                            hotWordRecycler.setVisibility(View.VISIBLE);
 //                            hotWordRecycler.start();
 //                            int resId = R.anim.layout_animation_fall_down;
-//                            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatMessageActivity.this, resId);
+//                            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatActivity.this, resId);
 //                            hotWordRecycler.setLayoutAnimation(animation);
 //                            hotWordRecycler.setAdapter(voiceAdapter);
 //                            voiceAdapter.notifyDataSetChanged();
@@ -262,7 +270,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
                 switch (motionEvent.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         dy = motionEvent.getY();
-                        Log.e(TAG, "onTouch: "+dy );
+                        Log.e(TAG, "onTouch: " + dy);
                         break;
                 }
                 return false;
@@ -330,7 +338,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
                     Log.e(TAG, "onChanged story: " + playState.info);
                     controlContainer.setVisibility(View.VISIBLE);
                     playControl.setVisibility(View.VISIBLE);
-                    mStoryName.setText("正在播放" + playState.info);
+                    mStoryName.setText("正在播放..." + playState.info);
                     //滑动停止当前播放并隐藏播放控制条
                     SwipeDismissBehavior<View> swipe = new SwipeDismissBehavior();
                     swipe.setSwipeDirection(SwipeDismissBehavior.SWIPE_DIRECTION_START_TO_END);
@@ -417,7 +425,7 @@ public class ChatMessageActivity extends AppCompatActivity implements View.OnCli
             imageHelp.setClickable(false);
             mScrollView.setVisibility(View.VISIBLE);
             int resId = R.anim.layout_animation_fall_down;
-            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatMessageActivity.this, resId);
+            LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(ChatActivity.this, resId);
             hotWordRecycler.setLayoutAnimation(animation);
             hotWordRecycler.scheduleLayoutAnimation();
 

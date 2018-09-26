@@ -1,4 +1,4 @@
-package so.chinaso.com.voicemodule.voice;
+package so.chinaso.com.voicemodule.chat;
 
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.MutableLiveData;
@@ -16,8 +16,6 @@ import com.iflytek.aiui.AIUIConstant;
 import com.iflytek.aiui.AIUIEvent;
 import com.iflytek.aiui.AIUIListener;
 import com.iflytek.aiui.AIUIMessage;
-import com.iflytek.location.result.GPSLocResult;
-import com.iflytek.location.result.NetLocResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,29 +23,31 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import io.reactivex.Completable;
 import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
-import so.chinaso.com.voicemodule.db.MessageDB;
 import so.chinaso.com.voicemodule.db.MessageDao;
 import so.chinaso.com.voicemodule.entity.DynamicEntityData;
 import so.chinaso.com.voicemodule.entity.RawMessage;
 import so.chinaso.com.voicemodule.entity.VoiceEntity;
+import so.chinaso.com.voicemodule.intent.player.AIUIPlayer;
 
 /**
  * Created by yf on 2018/8/9.
  */
 public class AIUIRepository extends ViewModel {
     private static final String TAG = AIUIRepository.class.getSimpleName();
-    //交互状态
+
+
+    //AIUI当前状态
     private int mCurrentState = AIUIConstant.STATE_IDLE;
+    //当前AIUI使用的配置
+    private JSONObject mLastConfig;
+    private String mMscCfg;
     private AIUIAgent mAIUIAgent = null;
     private Context mContext;
     //是否检测到前端点，提示 ’为说话‘ 时判断使用
@@ -56,18 +56,24 @@ public class AIUIRepository extends ViewModel {
     //处理PGS听写(流式听写）的队列
     private String voiceWords;
 
-    //当前消息列表
-    private LiveData<List<RawMessage>> mInteractMsg;
     //vad事件
     private MutableLiveData<AIUIEvent> mVADEvent = new MutableLiveData<>();
     //唤醒和休眠事件
     private MutableLiveData<AIUIEvent> mStateEvent = new SingleLiveEvent<>();
     //上传联系人
     private ContactRepository contactRepository;
+    private MessageDao mMessageDao;
+    private AIUIPlayer mPlayer;
 
-    public AIUIRepository(Context context) {
+
+    public AIUIRepository(Context context, MessageDao dao, AIUIPlayer player) {
         mContext = context;
+        mMessageDao = dao;
+        mPlayer = player;
+        initAIUIAgent();
     }
+
+
 
 
     public void startVoice() {
@@ -136,6 +142,10 @@ public class AIUIRepository extends ViewModel {
         initContract();
     }
 
+    public void stopTTS() {
+        stopCloudTTS();
+    }
+
     //AIUI事件监听器
     private AIUIListener mAIUIListener = new AIUIListener() {
 
@@ -165,7 +175,7 @@ public class AIUIRepository extends ViewModel {
                 break;
 
                 case AIUIConstant.EVENT_TTS: {
-//                    processTTS(aiuiEvent);
+//                    processTTS(event);
                 }
                 break;
 
@@ -195,6 +205,7 @@ public class AIUIRepository extends ViewModel {
         }
 
     };
+
 
     /**
      * 处理AIUI结果事件（听写结果和语义结果）
@@ -304,12 +315,13 @@ public class AIUIRepository extends ViewModel {
         if (null == mAIUIAgent) {
             Log.i(TAG, "create aiui agent");
             //创建AIUIAgent
-            mAIUIAgent = AIUIAgent.createAgent(mContext, getAIUIParams(), mAIUIListener);
+            mAIUIAgent = AIUIAgent.createAgent(mContext,getAIUIParams(), mAIUIListener);
         }
 
         if (null == mAIUIAgent) {
             final String strErrorTip = "语音服务出错！";
         }
+
     }
 
     private void fakeAIUIResult(int i, String s, String text, Object o, Map<String, String> data) {
@@ -373,18 +385,15 @@ public class AIUIRepository extends ViewModel {
                     @Override
                     public void run() throws Exception {
                         Log.e(TAG, "run: " + msg);
-                        MessageDB.getInstance(mContext).messageDao().addMessage(msg);
+                        mMessageDao.addMessage(msg);
                     }
                 });
     }
 
     public LiveData<List<RawMessage>> getInteractMsg() {
-        return MessageDB.getInstance(mContext).messageDao().getAllMessage();
+        return mMessageDao.getAllMessage();
     }
 
-    public void setInteractMsg(LiveData<List<RawMessage>> mInteractMsg) {
-        this.mInteractMsg = mInteractMsg;
-    }
 
     public void sendText(String msg) {
 //        if(mAppendVoiceMsg != null){
@@ -466,5 +475,24 @@ public class AIUIRepository extends ViewModel {
             e.printStackTrace();
         }
     }
+//
+//    /**
+//     * 处理AIUI云端tts事件
+//     *
+//     * @param event 结果事件
+//     */
+//    private void processTTS(AIUIEvent event) {
+//        switch (event.arg1) {
+//            case AIUIConstant.TTS_SPEAK_COMPLETED:
+//                if (mCurrentSettings.tts) {
+//                    mPlayer.playPreSongList();
+//                }
+//                break;
+//
+//            default:
+//                break;
+//        }
+//
+//    }
 
 }

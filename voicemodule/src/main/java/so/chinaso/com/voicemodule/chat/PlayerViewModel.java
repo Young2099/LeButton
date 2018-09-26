@@ -1,4 +1,4 @@
-package so.chinaso.com.voicemodule.voice;
+package so.chinaso.com.voicemodule.chat;
 
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.ViewModel;
@@ -30,19 +30,11 @@ import so.chinaso.com.voicemodule.intent.player.PlayState;
 public class PlayerViewModel extends ViewModel {
     private AIUIPlayer mPlayer;
 
-    public PlayerViewModel() {
+    @Inject
+    public PlayerViewModel(AIUIPlayer player) {
+        mPlayer = player;
+    }
 
-    }
-    public void init(Context context) {
-        BandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
-        TrackSelection.Factory videoTrackSelectionFactory =
-                new AdaptiveTrackSelection.Factory(bandwidthMeter);
-        TrackSelector trackSelector =
-                new DefaultTrackSelector(videoTrackSelectionFactory);
-        SimpleExoPlayer player =
-                ExoPlayerFactory.newSimpleInstance(context, trackSelector);
-        mPlayer = new AIUIPlayer(context,player);
-    }
     public LiveData<PlayState> getPlayState() { return mPlayer.getLiveState(); }
 
     public void playList(List<AIUIPlayer.SongInfo> list) { mPlayer.playList(list); }

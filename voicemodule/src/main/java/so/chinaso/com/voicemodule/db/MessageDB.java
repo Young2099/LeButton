@@ -16,18 +16,4 @@ import so.chinaso.com.voicemodule.entity.RawMessage;
 public abstract class MessageDB extends RoomDatabase {
     public abstract MessageDao messageDao();
 
-    private static MessageDB INSTANCE;
-    private static final Object sLock = new Object();
-
-    public static MessageDB getInstance(Context context) {
-        synchronized (sLock) {
-            if (INSTANCE == null) {
-                INSTANCE =
-                        Room.databaseBuilder(context.getApplicationContext(), MessageDB.class, "message.db")
-                                .build();
-            }
-            return INSTANCE;
-        }
-    }
-
 }

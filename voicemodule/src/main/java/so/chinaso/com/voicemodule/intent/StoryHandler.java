@@ -1,18 +1,6 @@
 package so.chinaso.com.voicemodule.intent;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import so.chinaso.com.voicemodule.entity.RawMessage;
-import so.chinaso.com.voicemodule.intent.player.AIUIPlayer;
-import so.chinaso.com.voicemodule.voice.PlayerViewModel;
+import so.chinaso.com.voicemodule.chat.PlayerViewModel;
 
 /**
  * Created by yf on 2018/9/13.

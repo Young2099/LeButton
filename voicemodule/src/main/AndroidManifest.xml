@@ -5,7 +5,7 @@
 
     <application>
         <activity
-            android:name=".ChatMessageActivity"
+            android:name=".ChatActivity"
             android:label="@string/title_activity_voice"
             android:launchMode="singleTop">
             <intent-filter>

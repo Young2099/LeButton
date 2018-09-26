@@ -93,6 +93,9 @@ public class AIUIPlayer {
                 if (playWhenReady) {
                     mActive = true;
                 }
+                if(playbackState == Player.STATE_ENDED){
+//                    mState.postValue(new PlayState());
+                }
                 if (mCurrentIndex > -1 && mCurrentIndex < songList.size()) {
                     SongInfo info = songList.get(mCurrentIndex);
                     mState.postValue(new PlayState(mActive, playWhenReady, info.songName));
@@ -123,9 +126,6 @@ public class AIUIPlayer {
             songList = new ArrayList<>();
         }
         DynamicConcatenatingMediaSource source = new DynamicConcatenatingMediaSource();
-//        for (SongInfo info : list) {
-//
-//        }
         DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
         // Produces DataSource instances through which media data is loaded.
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(mContext,

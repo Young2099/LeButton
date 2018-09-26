@@ -1,4 +1,4 @@
-package so.chinaso.com.voicemodule.voice;
+package so.chinaso.com.voicemodule.chat;
 
 import android.Manifest;
 import android.content.ContentResolver;
@@ -14,11 +14,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 
 /**
  * 联系人repo
  */
-
+@Singleton
 public class ContactRepository {
     private static final String LAST_VERSION_KEY = "contact_last_version";
     private static final String CONTACT_KEY = "contact";
@@ -27,6 +30,7 @@ public class ContactRepository {
     private String mLastVersion;
     private String mCurrentVersion;
 
+    @Inject
     public ContactRepository(Context context) {
         mContext = context;
         mLastVersion = mContext.getSharedPreferences(CONTACT_KEY, Context.MODE_PRIVATE).

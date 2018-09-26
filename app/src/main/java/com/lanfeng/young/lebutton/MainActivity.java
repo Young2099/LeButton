@@ -17,7 +17,7 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
 
-import so.chinaso.com.voicemodule.ChatMessageActivity;
+import so.chinaso.com.voicemodule.ChatActivity;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this,ChatMessageActivity.class));
+                startActivity(new Intent(MainActivity.this,ChatActivity.class));
             }
         });
     }

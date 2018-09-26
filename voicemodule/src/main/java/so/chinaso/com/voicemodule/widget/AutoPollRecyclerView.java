@@ -75,4 +75,5 @@ public class AutoPollRecyclerView extends RecyclerView {
         return super.onTouchEvent(e);
     }
 
+
 }

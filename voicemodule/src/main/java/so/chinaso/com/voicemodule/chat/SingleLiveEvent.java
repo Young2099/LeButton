@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package so.chinaso.com.voicemodule.voice;
+package so.chinaso.com.voicemodule.chat;
 
 import android.arch.lifecycle.LifecycleOwner;
 import android.arch.lifecycle.MutableLiveData;
